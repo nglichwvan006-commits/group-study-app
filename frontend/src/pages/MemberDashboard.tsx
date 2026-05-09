@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, AlertTriangle } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MemberDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
@@ -73,40 +72,13 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
-  const handleSubmitAssignment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedAssignment) return;
+  // --- HÀM CHẤM ĐIỂM AI SIÊU ỔN ĐỊNH (SUPER ROBUST AI GRADING) ---
+  const performAIGrading = async (content: string, assignment: any) => {
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) throw new Error("Chưa cấu hình VITE_GEMINI_API_KEY");
 
-    setIsSubmitting(true);
-    const loadingToast = toast.loading('Đang gửi bài và bắt đầu chấm điểm...');
-    
-    try {
-      // 1. Save code to backend
-      const saveRes = await api.post('/assignments/submit', {
-        assignmentId: selectedAssignment.id,
-        content: submissionContent,
-      });
-      const submissionId = saveRes.data.id;
-
-      // 2. AI Grading via Official SDK
-      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!geminiKey) {
-        toast.error('Chưa cấu hình VITE_GEMINI_API_KEY.', { id: loadingToast });
-        fetchMySubmissions();
-        return;
-      }
-
-      toast.loading('AI đang phân tích bài làm...', { id: loadingToast });
-
-      // FORCE API VERSION v1 to avoid 404 error on v1beta
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel(
-        { model: "gemini-1.5-flash" },
-        { apiVersion: "v1" }
-      );
-
-      const prompt = `You are a strict programming judge.
-Evaluate the code for assignment: "${selectedAssignment.title}".
+    const prompt = `You are a strict programming judge.
+Evaluate the code for assignment: "${assignment.title}".
 Return ONLY a raw JSON object. No explanation.
 
 {
@@ -115,35 +87,87 @@ Return ONLY a raw JSON object. No explanation.
 }
 
 Input:
-- Goal: ${selectedAssignment.description}
-- Language: ${selectedAssignment.language}
-- Max Points: ${selectedAssignment.maxScore}
+- Goal: ${assignment.description}
+- Language: ${assignment.language}
+- Max Points: ${assignment.maxScore}
 - Student Code:
-${submissionContent}`;
+${content}`;
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text().trim();
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) throw new Error("AI trả về định dạng sai");
-      
-      const { score, feedback } = JSON.parse(jsonMatch[0]);
+    // Danh sách các "đường cửa" để thử (v1beta và v1 với các model khác nhau)
+    const endpoints = [
+      { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, name: "Flash v1beta" },
+      { url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, name: "Flash v1" },
+      { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, name: "Pro v1beta" }
+    ];
 
-      // 3. Update backend
+    let lastError = "";
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`[AI] Đang thử chấm điểm bằng: ${endpoint.name}`);
+        const response = await fetch(endpoint.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+        } else {
+          const errData = await response.json();
+          lastError = errData.error?.message || response.statusText;
+          console.warn(`[AI] ${endpoint.name} thất bại: ${lastError}`);
+        }
+      } catch (e: any) {
+        lastError = e.message;
+        console.warn(`[AI] ${endpoint.name} lỗi mạng: ${lastError}`);
+      }
+    }
+
+    throw new Error(`Tất cả các model AI đều không phản hồi. Lỗi cuối: ${lastError}`);
+  };
+
+  const handleSubmitAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAssignment) return;
+
+    setIsSubmitting(true);
+    const loadingToast = toast.loading('Đang gửi bài làm...');
+    
+    try {
+      // 1. Lưu code vào Database trước
+      const saveRes = await api.post('/assignments/submit', {
+        assignmentId: selectedAssignment.id,
+        content: submissionContent,
+      });
+      const submissionId = saveRes.data.id;
+
+      // 2. Tiến hành chấm điểm AI (Thử nhiều lần)
+      toast.loading('AI đang phân tích (đang thử nhiều phương thức)...', { id: loadingToast });
+      
+      const result = await performAIGrading(submissionContent, selectedAssignment);
+
+      // 3. Gửi kết quả về Backend
       await api.patch(`/assignments/submissions/${submissionId}/ai-result`, {
-        score: Math.min(score, selectedAssignment.maxScore),
-        feedback: feedback
+        score: Math.min(result.score, selectedAssignment.maxScore),
+        feedback: result.feedback
       });
 
-      toast.success(`Xong! Bạn đạt ${score}/${selectedAssignment.maxScore} điểm.`, { id: loadingToast });
+      toast.success(`Chấm điểm thành công! Bạn đạt ${result.score} điểm.`, { id: loadingToast, duration: 5000 });
       setSubmissionContent('');
       setSelectedAssignment(null);
       fetchMySubmissions();
       fetchLeaderboard();
       
     } catch (error: any) {
-      console.error("AI Error:", error);
-      toast.error('Lỗi: ' + (error.message || 'Không thể chấm điểm'), { id: loadingToast });
+      console.error("Final AI Error:", error);
+      toast.error(error.message, { id: loadingToast, duration: 6000 });
+      fetchMySubmissions(); // Vẫn load lại để hiện bài nộp FAILED
     } finally {
       setIsSubmitting(false);
     }
@@ -189,7 +213,6 @@ ${submissionContent}`;
         </button>
       </div>
 
-      {/* Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div 
@@ -344,6 +367,13 @@ ${submissionContent}`;
                                         </div>
                                       </div>
                                     )}
+                                    {sub.status === 'FAILED' && (
+                                      <div className="mt-2 p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
+                                        <div className="flex items-center gap-2 font-bold mb-1"><AlertTriangle size={14}/> Lỗi chấm điểm tự động</div>
+                                        <p>{sub.feedback}</p>
+                                        <p className="mt-2 font-medium opacity-70 italic">* Vui lòng thử nộp lại bài hoặc liên hệ Admin để chấm tay.</p>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               }
@@ -373,7 +403,7 @@ ${submissionContent}`;
                                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-500/25 transform hover:scale-[1.01] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
                               >
                                 {isSubmitting ? (
-                                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang chấm điểm...</>
+                                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang xử lý...</>
                                 ) : (
                                   <><CheckCircle size={20} /> Nộp bài & Chấm điểm bằng AI</>
                                 )}

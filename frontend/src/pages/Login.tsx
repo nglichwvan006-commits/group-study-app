@@ -92,6 +92,12 @@ const Login: React.FC = () => {
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
           Login with Google
         </button>
+
+        {/* Debug Info */}
+        <div className="mt-8 p-4 bg-slate-100 rounded-lg text-[10px] font-mono text-slate-500 overflow-hidden break-all">
+          <p className="font-bold border-b border-slate-200 mb-1 pb-1">DEBUG INFO (Dành cho việc sửa lỗi):</p>
+          <p>Link API đang dùng: {import.meta.env.VITE_API_URL || "CHƯA ĐỊNH NGHĨA (Mặc định sẽ lỗi trên ĐT)"}</p>
+        </div>
       </div>
     </div>
   );

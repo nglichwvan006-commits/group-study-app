@@ -10,8 +10,10 @@ import resourceRoutes from "./routes/resource.routes";
 
 const app = express();
 
+console.log("CORS Allowed Origin:", process.env.FRONTEND_URL || "Not Set (Defaulting to localhost)");
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: true, // Allow all origins for debugging
   credentials: true
 }));
 app.use(express.json());

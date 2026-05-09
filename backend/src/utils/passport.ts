@@ -10,7 +10,8 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID || "google_client_id",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "google_client_secret",
-      callbackURL: "http://localhost:5000/api/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback",
+      proxy: true,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -34,7 +35,6 @@ passport.use(
             },
           });
         } else if (user.role !== Role.ADMIN) {
-          // In case a member with this email was created (unlikely given requirements, but safety first)
           user = await prisma.user.update({
             where: { email },
             data: { role: Role.ADMIN },

@@ -25,7 +25,9 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const backendBase = apiUrl.replace('/api', '');
+    window.location.href = `${backendBase}/auth/google`;
   };
 
   return (

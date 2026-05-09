@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -27,8 +27,8 @@ model User {
 model Resource {
   id        String   @id @default(uuid())
   title     String
-  url       String   // Could be a link or a local file path
-  type      String   // "LINK" or "FILE"
+  url       String   
+  type      String   
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())

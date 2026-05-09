@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import prisma from "../utils/prisma";
 
-// Use a more stable initialization
+// Initialization with explicit dummy key to avoid crash
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 
 export const gradeSubmissionAsync = async (submissionId: string) => {
@@ -13,23 +13,26 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
 
     if (!submission || submission.status !== "PENDING") return;
 
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("[AI Grading] GEMINI_API_KEY is not configured.");
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "dummy_key") {
+      console.error("[AI Grading] API Key is missing or invalid.");
       await prisma.submission.update({
         where: { id: submissionId },
-        data: { status: "FAILED", feedback: "Lỗi hệ thống: Chưa cấu hình API Key cho AI." },
+        data: { status: "FAILED", feedback: "Lỗi: Chưa cấu hình GEMINI_API_KEY trên Render." },
       });
       return;
     }
 
-    console.log(`[AI Grading] Starting evaluation for submission: ${submissionId}`);
+    console.log(`[AI Grading] EVALUATING: ${submissionId} using Gemini 1.5 Flash (v1)`);
     
-    // Try gemini-1.5-flash-latest first as it's more standard
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // FORCE API VERSION v1 to avoid 404 on v1beta
+    const model = genAI.getGenerativeModel(
+      { model: "gemini-1.5-flash" }, 
+      { apiVersion: 'v1' }
+    );
 
     const prompt = `You are a strict programming judge.
 Evaluate the following solution based on the assignment requirements.
-IMPORTANT: Return ONLY valid JSON. Do not include any markdown formatting or \`\`\`json blocks.
+Return ONLY a raw JSON object. NO markdown, NO \`\`\`json blocks.
 
 {
   "score": number,
@@ -40,54 +43,44 @@ IMPORTANT: Return ONLY valid JSON. Do not include any markdown formatting or \`\
   "suggestions": ["string"]
 }
 
-Input:
-- Assignment: ${submission.assignment.title}
-- Description: ${submission.assignment.description}
-- Language: ${submission.assignment.language}
-- Rubric: ${submission.assignment.rubric}
-- Max Score: ${submission.assignment.maxScore}
-- Student Code:
+ASSIGNMENT:
+Title: ${submission.assignment.title}
+Requirements: ${submission.assignment.description}
+Language: ${submission.assignment.language}
+Max Points: ${submission.assignment.maxScore}
+Rubric: ${submission.assignment.rubric}
+
+STUDENT SOLUTION:
 ${submission.content}`;
 
-    console.log(`[AI Grading] Sending request to Gemini...`);
-    
-    let result;
-    try {
-      result = await model.generateContent(prompt);
-    } catch (apiError: any) {
-      console.error("[AI Grading] Primary model failed, trying fallback...", apiError.message);
-      // Fallback to gemini-pro if flash fails
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
-      result = await fallbackModel.generateContent(prompt);
-    }
-
+    console.log(`[AI Grading] Requesting Gemini...`);
+    const result = await model.generateContent(prompt);
     const responseText = result.response.text().trim();
-    console.log(`[AI Grading] Received response.`);
+    console.log(`[AI Grading] Gemini Response: ${responseText.substring(0, 50)}...`);
     
-    // Extract JSON from response (handling potential markdown)
+    // Robust JSON extraction
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-       console.error("[AI Grading] Response format error:", responseText);
-       throw new Error(`Định dạng AI trả về không hợp lệ.`);
+       console.error("[AI Grading] Format Error. Response was:", responseText);
+       throw new Error("AI trả về định dạng không phải JSON.");
     }
 
     const gradingResult = JSON.parse(jsonMatch[0]);
 
-    // Clamp score
+    // Update DB
     const clampedScore = Math.max(0, Math.min(gradingResult.score, submission.assignment.maxScore));
 
-    // Update submission
     await prisma.submission.update({
       where: { id: submissionId },
       data: {
         score: clampedScore,
-        feedback: gradingResult.feedback || "Đã chấm xong.",
+        feedback: gradingResult.feedback || "Hoàn thành chấm điểm.",
         status: "GRADED",
         gradedAt: new Date(),
       },
     });
 
-    // Update User Ranking
+    // Ranking Update
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: submission.user.id } });
       if (user) {
@@ -104,33 +97,29 @@ ${submission.content}`;
 
         await tx.user.update({
           where: { id: user.id },
-          data: {
-            totalPoints: newPoints,
-            level: newLevel,
-            badge: newBadge,
-          },
+          data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
         });
       }
     });
 
-    // Create Notification
+    // Notify User
     await prisma.notification.create({
       data: {
         userId: submission.user.id,
-        title: "Bài tập đã được chấm",
-        message: `Bạn đạt ${clampedScore}/${submission.assignment.maxScore} điểm cho bài '${submission.assignment.title}'.`,
+        title: "Chấm điểm hoàn tất",
+        message: `Kết quả: ${clampedScore}/${submission.assignment.maxScore} điểm cho bài '${submission.assignment.title}'.`,
       },
     });
 
-    console.log("[AI Grading] Process completed successfully.");
+    console.log("[AI Grading] DONE.");
 
   } catch (error: any) {
-    console.error(`[AI Grading] Final failure:`, error);
+    console.error(`[AI Grading] ERROR:`, error);
     await prisma.submission.update({
       where: { id: submissionId },
       data: { 
         status: "FAILED", 
-        feedback: `Lỗi AI: ${error.message || "Không thể kết nối với máy chủ AI."}` 
+        feedback: `Lỗi hệ thống AI (v1): ${error.message}` 
       },
     });
   }

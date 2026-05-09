@@ -7,7 +7,7 @@ export const getUsers = async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, email: true, name: true, role: true, isMuted: true, createdAt: true },
+      select: { id: true, email: true, name: true, role: true, isMuted: true, createdAt: true, totalPoints: true, level: true, badge: true },
     });
     res.json(users);
   } catch (error) {
@@ -79,5 +79,60 @@ export const sendWarning = async (req: Request, res: Response) => {
     res.status(201).json(warning);
   } catch (error) {
     res.status(500).json({ message: "Error sending warning" });
+  }
+};
+
+export const overrideScore = async (req: any, res: any) => {
+  const { id } = req.params;
+  const { score, feedback } = req.body;
+
+  try {
+    const submission = await prisma.submission.findUnique({
+      where: { id },
+      include: { assignment: true, user: true },
+    });
+
+    if (!submission) return res.status(404).json({ message: "Submission not found" });
+
+    const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
+    const oldScore = submission.score || 0;
+    const diff = clampedScore - oldScore;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.submission.update({
+        where: { id },
+        data: {
+          score: clampedScore,
+          feedback: feedback || "Chấm điểm thủ công bởi Admin.",
+          status: "GRADED",
+          gradedAt: new Date(),
+        },
+      });
+
+      if (diff !== 0) {
+        const user = await tx.user.findUnique({ where: { id: submission.userId } });
+        if (user) {
+          const newPoints = Math.max(0, user.totalPoints + diff);
+          const newLevel = Math.floor(newPoints / 100) + 1;
+          
+          let newBadge = user.badge;
+          if (newPoints >= 1000) newBadge = "Master";
+          else if (newPoints >= 500) newBadge = "Diamond";
+          else if (newPoints >= 300) newBadge = "Platinum";
+          else if (newPoints >= 150) newBadge = "Gold";
+          else if (newPoints >= 50) newBadge = "Silver";
+          else newBadge = "Bronze";
+
+          await tx.user.update({
+            where: { id: user.id },
+            data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
+          });
+        }
+      }
+    });
+
+    res.json({ message: "Score updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating score" });
   }
 };

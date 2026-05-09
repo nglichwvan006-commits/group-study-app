@@ -1,8 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import prisma from "../utils/prisma";
-
-// Initialization with explicit dummy key to avoid crash
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 
 export const gradeSubmissionAsync = async (submissionId: string) => {
   try {
@@ -13,8 +9,8 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
 
     if (!submission || submission.status !== "PENDING") return;
 
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "dummy_key") {
-      console.error("[AI Grading] API Key is missing or invalid.");
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("[AI Grading] API Key is missing.");
       await prisma.submission.update({
         where: { id: submissionId },
         data: { status: "FAILED", feedback: "Lỗi: Chưa cấu hình GEMINI_API_KEY trên Render." },
@@ -22,13 +18,9 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
       return;
     }
 
-    console.log(`[AI Grading] EVALUATING: ${submissionId} using Gemini 1.5 Flash (v1)`);
+    console.log(`[AI Grading] EVALUATING: ${submissionId} via Direct REST API (v1)`);
     
-    // FORCE API VERSION v1 to avoid 404 on v1beta
-    const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" }, 
-      { apiVersion: 'v1' }
-    );
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
     const prompt = `You are a strict programming judge.
 Evaluate the following solution based on the assignment requirements.
@@ -53,9 +45,27 @@ Rubric: ${submission.assignment.rubric}
 STUDENT SOLUTION:
 ${submission.content}`;
 
-    console.log(`[AI Grading] Requesting Gemini...`);
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[AI Grading] Google API Error:", response.status, errorData);
+      throw new Error(`Google API trả về lỗi ${response.status}: ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!responseText) {
+      throw new Error("AI không trả về nội dung.");
+    }
+
     console.log(`[AI Grading] Gemini Response: ${responseText.substring(0, 50)}...`);
     
     // Robust JSON extraction
@@ -119,7 +129,7 @@ ${submission.content}`;
       where: { id: submissionId },
       data: { 
         status: "FAILED", 
-        feedback: `Lỗi hệ thống AI (v1): ${error.message}` 
+        feedback: `Lỗi kết nối AI: ${error.message}` 
       },
     });
   }

@@ -1,6 +1,10 @@
+import { exec } from "child_process";
+import { promisify } from "util";
 import prisma from "../utils/prisma";
 
-export const gradeSubmissionAsync = async (submissionId: string) => {
+const execAsync = promisify(exec);
+
+export const gradeSubmissionAsync = async (submissionId: string, retryCount = 0) => {
   try {
     const submission = await prisma.submission.findUnique({
       where: { id: submissionId },
@@ -10,100 +14,72 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
     if (!submission || submission.status !== "PENDING") return;
 
     if (!process.env.GEMINI_API_KEY) {
-      console.error("[AI Grading] API Key is missing.");
-      await prisma.submission.update({
-        where: { id: submissionId },
-        data: { status: "FAILED", feedback: "Lỗi: Chưa cấu hình GEMINI_API_KEY trên Render." },
-      });
-      return;
+      throw new Error("Chưa cấu hình GEMINI_API_KEY");
     }
 
-    console.log(`[AI Grading] EVALUATING: ${submissionId} via Direct REST API (v1)`);
-    
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    console.log(`[CLI Grading] Đang chấm bài: ${submission.assignment.title} (Lần thử: ${retryCount + 1})`);
 
-    const prompt = `You are a strict programming judge.
-Evaluate the following solution based on the assignment requirements.
-Return ONLY a raw JSON object. NO markdown, NO \`\`\`json blocks.
+    const prompt = `You are a strict programming judge. 
+Evaluate this ${submission.assignment.language} code. 
+Return ONLY valid raw JSON. No markdown.
 
 {
   "score": number,
-  "maxScore": number,
-  "feedback": "string",
-  "strengths": ["string"],
-  "weaknesses": ["string"],
-  "suggestions": ["string"]
+  "feedback": "string"
 }
 
-ASSIGNMENT:
-Title: ${submission.assignment.title}
 Requirements: ${submission.assignment.description}
-Language: ${submission.assignment.language}
-Max Points: ${submission.assignment.maxScore}
-Rubric: ${submission.assignment.rubric}
+Max Score: ${submission.assignment.maxScore}
+Student Code:
+${submission.content.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$')}`;
 
-STUDENT SOLUTION:
-${submission.content}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("[AI Grading] Google API Error:", response.status, errorData);
-      throw new Error(`Google API trả về lỗi ${response.status}: ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-    if (!responseText) {
-      throw new Error("AI không trả về nội dung.");
-    }
-
-    console.log(`[AI Grading] Gemini Response: ${responseText.substring(0, 50)}...`);
+    // Sử dụng curl (CLI) để gọi API - Đây là cách ổn định nhất trên Linux/Render
+    const modelName = retryCount === 0 ? "gemini-1.5-flash" : "gemini-pro";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
-    // Robust JSON extraction
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-       console.error("[AI Grading] Format Error. Response was:", responseText);
-       throw new Error("AI trả về định dạng không phải JSON.");
+    const curlCommand = `curl -X POST "${apiUrl}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "contents": [{ "parts": [{ "text": "${prompt.replace(/\n/g, ' ')}" }] }]
+      }'`;
+
+    const { stdout, stderr } = await execAsync(curlCommand);
+
+    if (stderr && !stdout) {
+      throw new Error(`CLI Error: ${stderr}`);
     }
 
-    const gradingResult = JSON.parse(jsonMatch[0]);
+    const response = JSON.parse(stdout);
+    const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI không trả về JSON hợp lệ");
 
-    // Update DB
-    const clampedScore = Math.max(0, Math.min(gradingResult.score, submission.assignment.maxScore));
+    const result = JSON.parse(jsonMatch[0]);
+    const clampedScore = Math.max(0, Math.min(result.score, submission.assignment.maxScore));
 
-    await prisma.submission.update({
-      where: { id: submissionId },
-      data: {
-        score: clampedScore,
-        feedback: gradingResult.feedback || "Hoàn thành chấm điểm.",
-        status: "GRADED",
-        gradedAt: new Date(),
-      },
-    });
-
-    // Ranking Update
+    // Cập nhật kết quả vào DB
     await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: submission.user.id } });
+      await tx.submission.update({
+        where: { id: submissionId },
+        data: {
+          score: clampedScore,
+          feedback: result.feedback,
+          status: "GRADED",
+          gradedAt: new Date(),
+        },
+      });
+
+      const user = await tx.user.findUnique({ where: { id: submission.userId } });
       if (user) {
         const newPoints = user.totalPoints + clampedScore;
         const newLevel = Math.floor(newPoints / 100) + 1;
-        
         let newBadge = user.badge;
         if (newPoints >= 1000) newBadge = "Master";
         else if (newPoints >= 500) newBadge = "Diamond";
         else if (newPoints >= 300) newBadge = "Platinum";
         else if (newPoints >= 150) newBadge = "Gold";
         else if (newPoints >= 50) newBadge = "Silver";
-        else newBadge = "Bronze";
 
         await tx.user.update({
           where: { id: user.id },
@@ -112,25 +88,28 @@ ${submission.content}`;
       }
     });
 
-    // Notify User
+    // Tạo thông báo
     await prisma.notification.create({
       data: {
-        userId: submission.user.id,
-        title: "Chấm điểm hoàn tất",
-        message: `Kết quả: ${clampedScore}/${submission.assignment.maxScore} điểm cho bài '${submission.assignment.title}'.`,
+        userId: submission.userId,
+        title: "Bài tập đã được chấm",
+        message: `Bạn đạt ${clampedScore}/${submission.assignment.maxScore} điểm cho bài ${submission.assignment.title}.`,
       },
     });
 
-    console.log("[AI Grading] DONE.");
+    console.log(`[CLI Grading] Hoàn tất chấm bài: ${submissionId}`);
 
   } catch (error: any) {
-    console.error(`[AI Grading] ERROR:`, error);
+    console.error(`[CLI Grading] Lỗi:`, error.message);
+    
+    if (retryCount < 2) {
+      console.log("[CLI Grading] Đang thử lại với model dự phòng...");
+      return gradeSubmissionAsync(submissionId, retryCount + 1);
+    }
+
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { 
-        status: "FAILED", 
-        feedback: `Lỗi kết nối AI: ${error.message}` 
-      },
+      data: { status: "FAILED", feedback: `Lỗi hệ thống (CLI): ${error.message}` },
     });
   }
 };

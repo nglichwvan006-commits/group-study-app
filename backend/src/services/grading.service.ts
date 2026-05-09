@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import prisma from "../utils/prisma";
 
+// Use a more stable initialization
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 
 export const gradeSubmissionAsync = async (submissionId: string) => {
@@ -13,7 +14,7 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
     if (!submission || submission.status !== "PENDING") return;
 
     if (!process.env.GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not configured.");
+      console.error("[AI Grading] GEMINI_API_KEY is not configured.");
       await prisma.submission.update({
         where: { id: submissionId },
         data: { status: "FAILED", feedback: "Lỗi hệ thống: Chưa cấu hình API Key cho AI." },
@@ -21,11 +22,14 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
       return;
     }
 
+    console.log(`[AI Grading] Starting evaluation for submission: ${submissionId}`);
+    
+    // Try gemini-1.5-flash-latest first as it's more standard
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `You are a strict programming judge.
 Evaluate the following solution based on the assignment requirements.
-IMPORTANT: Return ONLY valid JSON. Do not include any explanation or markdown formatting.
+IMPORTANT: Return ONLY valid JSON. Do not include any markdown formatting or \`\`\`json blocks.
 
 {
   "score": number,
@@ -45,13 +49,26 @@ Input:
 - Student Code:
 ${submission.content}`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
+    console.log(`[AI Grading] Sending request to Gemini...`);
     
-    // Improved JSON extraction
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (apiError: any) {
+      console.error("[AI Grading] Primary model failed, trying fallback...", apiError.message);
+      // Fallback to gemini-pro if flash fails
+      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+      result = await fallbackModel.generateContent(prompt);
+    }
+
+    const responseText = result.response.text().trim();
+    console.log(`[AI Grading] Received response.`);
+    
+    // Extract JSON from response (handling potential markdown)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-       throw new Error(`AI returned invalid format: ${responseText.substring(0, 100)}`);
+       console.error("[AI Grading] Response format error:", responseText);
+       throw new Error(`Định dạng AI trả về không hợp lệ.`);
     }
 
     const gradingResult = JSON.parse(jsonMatch[0]);
@@ -70,7 +87,7 @@ ${submission.content}`;
       },
     });
 
-    // Update Ranking Points in a transaction
+    // Update User Ranking
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: submission.user.id } });
       if (user) {
@@ -96,21 +113,25 @@ ${submission.content}`;
       }
     });
 
-    // Send notification
+    // Create Notification
     await prisma.notification.create({
       data: {
         userId: submission.user.id,
-        title: "Đã chấm điểm bài tập",
-        message: `Bài tập '${submission.assignment.title}' của bạn đã được chấm: ${clampedScore}/${submission.assignment.maxScore} điểm.`,
+        title: "Bài tập đã được chấm",
+        message: `Bạn đạt ${clampedScore}/${submission.assignment.maxScore} điểm cho bài '${submission.assignment.title}'.`,
       },
     });
 
+    console.log("[AI Grading] Process completed successfully.");
+
   } catch (error: any) {
-    console.error(`Grading failed for submission ${submissionId}:`, error);
-    const errorMessage = error.message || "Lỗi không xác định.";
+    console.error(`[AI Grading] Final failure:`, error);
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { status: "FAILED", feedback: `Lỗi AI: ${errorMessage}` },
+      data: { 
+        status: "FAILED", 
+        feedback: `Lỗi AI: ${error.message || "Không thể kết nối với máy chủ AI."}` 
+      },
     });
   }
 };

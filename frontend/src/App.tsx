@@ -59,6 +59,7 @@ const AppRoutes = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      <Toaster position="top-center" reverseOrder={false} />
       <Router>
         <AppRoutes />
       </Router>

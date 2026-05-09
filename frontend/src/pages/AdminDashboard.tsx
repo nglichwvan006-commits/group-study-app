@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon } from 'lucide-react';
+import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
   const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources'>('users');
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // User form
   const [showAddMember, setShowAddMember] = useState(false);
@@ -29,7 +32,7 @@ const AdminDashboard: React.FC = () => {
       const response = await api.get('/admin/users');
       setUsers(response.data);
     } catch (error) {
-      console.error('Error fetching users', error);
+      toast.error('Lỗi khi tải danh sách người dùng');
     } finally {
       setIsLoading(false);
     }
@@ -37,35 +40,40 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    const loadingToast = toast.loading('Đang tạo tài khoản...');
     try {
       await api.post('/admin/users', newMember);
       fetchUsers();
       setShowAddMember(false);
       setNewMember({ name: '', email: '', password: '' });
+      toast.success('Tạo tài khoản thành công!', { id: loadingToast });
     } catch (error) {
-      alert('Error creating member');
+      toast.error('Lỗi khi tạo tài khoản', { id: loadingToast });
     }
   };
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+    const loadingToast = toast.loading('Đang tạo bài tập...');
     try {
       await api.post('/assignments', newAssignment);
-      alert('Assignment created!');
+      toast.success('Bài tập đã được đăng!', { id: loadingToast });
       setShowAddAssignment(false);
       setNewAssignment({ title: '', description: '', deadline: '' });
     } catch (error) {
-      alert('Error creating assignment');
+      toast.error('Lỗi khi tạo bài tập', { id: loadingToast });
     }
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) {
+      const loadingToast = toast.loading('Đang xóa...');
       try {
         await api.delete(`/admin/users/${id}`);
         fetchUsers();
+        toast.success('Đã xóa người dùng', { id: loadingToast });
       } catch (error) {
-        alert('Error deleting user');
+        toast.error('Lỗi khi xóa người dùng', { id: loadingToast });
       }
     }
   };
@@ -74,285 +82,274 @@ const AdminDashboard: React.FC = () => {
     try {
       await api.patch(`/admin/users/${id}/mute`, { isMuted: !isMuted });
       fetchUsers();
+      toast.success(isMuted ? 'Đã bỏ cấm chat' : 'Đã cấm chat');
     } catch (error) {
-      alert('Error updating mute status');
+      toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
 
+  const NavItem = ({ id, icon: Icon, label }: { id: any, icon: any, label: string }) => (
+    <button
+      onClick={() => {
+        setActiveTab(id);
+        setIsSidebarOpen(false);
+      }}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium ${
+        activeTab === id 
+          ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20' 
+          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent'
+      }`}
+    >
+      <Icon size={20} className={activeTab === id ? "text-indigo-600 dark:text-indigo-400" : ""} /> {label}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] flex transition-colors duration-500 overflow-hidden font-sans">
+      
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-40">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <Shield className="text-white" size={16} />
+          </div>
+          <span className="font-bold text-slate-900 dark:text-white">Admin Panel</span>
+        </div>
+        <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-300">
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary-600 flex items-center gap-2">
-            <Shield size={24} /> Admin
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{user?.name}</p>
+      <motion.div 
+        className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50 flex flex-col transition-transform duration-300 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div className="p-6 md:p-8 pt-8 md:pt-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
+              <Shield className="text-indigo-600" size={24} /> Admin
+            </h1>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-wider">{user?.name}</p>
+          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400">
+            <X size={24} />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeTab === 'users' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            <User size={20} /> Quản lý người dùng
-          </button>
-          <button
-            onClick={() => setActiveTab('assignments')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeTab === 'assignments' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            <BookOpen size={20} /> Bài tập
-          </button>
-          <button
-            onClick={() => setActiveTab('resources')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeTab === 'resources' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            <FileText size={20} /> Kho tài liệu
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeTab === 'chat' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            <MessageSquare size={20} /> Chat nhóm
-          </button>
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+          <NavItem id="users" icon={User} label="Quản lý người dùng" />
+          <NavItem id="assignments" icon={BookOpen} label="Bài tập" />
+          <NavItem id="resources" icon={FileText} label="Kho tài liệu" />
+          <NavItem id="chat" icon={MessageSquare} label="Chat nhóm" />
         </nav>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <div className="p-4 m-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 space-y-2">
           <button
             onClick={toggleDarkMode}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 shadow-sm transition-all font-medium"
           >
-            {darkMode ? <><Sun size={20} /> Chế độ sáng</> : <><Moon size={20} /> Chế độ tối</>}
+            {darkMode ? <><Sun size={18} className="text-amber-500" /> Sáng</> : <><Moon size={18} className="text-indigo-500" /> Tối</>}
           </button>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 shadow-sm transition-all font-medium"
           >
-            <LogOut size={20} /> Đăng xuất
+            <LogOut size={18} /> Đăng xuất
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8 overflow-y-auto">
-        {activeTab === 'users' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quản lý người dùng</h2>
-              <button
-                onClick={() => setShowAddMember(true)}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus size={20} /> Thêm thành viên
-              </button>
-            </div>
-
-            {showAddMember && (
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-4 duration-300">
-                <h3 className="text-lg font-semibold mb-4 dark:text-white">Tạo tài khoản thành viên mới</h3>
-                <form onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Họ tên"
-                    required
-                    className="px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                    value={newMember.name}
-                    onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    required
-                    className="px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                    value={newMember.email}
-                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Mật khẩu"
-                    required
-                    className="px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                    value={newMember.password}
-                    onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
-                  />
-                  <div className="md:col-span-3 flex justify-end gap-3 mt-2">
+      <div className="flex-1 h-screen overflow-y-auto pt-16 md:pt-0 relative">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-900/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+        
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto h-full flex flex-col">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full flex flex-col"
+            >
+              {activeTab === 'users' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Người dùng</h2>
                     <button
-                      type="button"
-                      onClick={() => setShowAddMember(false)}
-                      className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      onClick={() => setShowAddMember(true)}
+                      className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-105 active:scale-95 font-semibold"
                     >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                      Tạo tài khoản
+                      <Plus size={20} /> Thêm thành viên
                     </button>
                   </div>
-                </form>
-              </div>
-            )}
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                  <tr>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Tên</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Email</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Vai trò</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Trạng thái</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                      <td className="px-6 py-4 dark:text-white">{u.name}</td>
-                      <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{u.email}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {u.isMuted ? (
-                          <span className="flex items-center gap-1 text-red-500 text-sm font-medium">
-                            <MicOff size={14} /> Bị cấm chat
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-green-500 text-sm font-medium">
-                            <Mic size={14} /> Đang hoạt động
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleToggleMute(u.id, u.isMuted)}
-                            title={u.isMuted ? 'Bỏ cấm' : 'Cấm chat'}
-                            className={`p-2 rounded-lg transition-colors ${
-                              u.isMuted ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                            }`}
-                          >
-                            {u.isMuted ? <Mic size={18} /> : <MicOff size={18} />}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            title="Xóa"
-                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                  <AnimatePresence>
+                    {showAddMember && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-white/20 dark:border-slate-800/50 mb-6">
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                            <User size={20} className="text-indigo-500" /> Tạo tài khoản thành viên mới
+                          </h3>
+                          <form onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <input type="text" placeholder="Họ tên" required className="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newMember.name} onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} />
+                            <input type="email" placeholder="Email" required className="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} />
+                            <input type="password" placeholder="Mật khẩu" required className="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newMember.password} onChange={(e) => setNewMember({ ...newMember, password: e.target.value })} />
+                            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
+                              <button type="button" onClick={() => setShowAddMember(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors font-medium">Hủy</button>
+                              <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium shadow-md shadow-indigo-500/20">Tạo tài khoản</button>
+                            </div>
+                          </form>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {isLoading && <div className="p-8 text-center text-slate-500 dark:text-slate-400">Đang tải danh sách...</div>}
-            </div>
-          </div>
-        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-        {activeTab === 'resources' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Kho tài liệu</h2>
-            <ResourceLibrary />
-          </div>
-        )}
+                  <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700/50 backdrop-blur-md">
+                          <tr>
+                            <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">Tên</th>
+                            <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">Email</th>
+                            <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">Vai trò</th>
+                            <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">Trạng thái</th>
+                            <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase text-right">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/50 dark:divide-slate-700/50">
+                          {users.map((u, index) => (
+                            <motion.tr 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              key={u.id} 
+                              className="hover:bg-indigo-50/30 dark:hover:bg-slate-800/40 transition-colors group"
+                            >
+                              <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white whitespace-nowrap">{u.name}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">{u.email}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                  u.role === 'ADMIN' ? 'bg-purple-100/50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20' : 'bg-blue-100/50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20'
+                                }`}>
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {u.isMuted ? (
+                                  <span className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 text-sm font-medium bg-rose-50 dark:bg-rose-500/10 px-3 py-1 rounded-full w-fit">
+                                    <MicOff size={14} /> Bị cấm
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full w-fit">
+                                    <Mic size={14} /> Hoạt động
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => handleToggleMute(u.id, u.isMuted)} title={u.isMuted ? 'Bỏ cấm' : 'Cấm chat'} className={`p-2 rounded-xl transition-all ${u.isMuted ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-400'}`}>
+                                    {u.isMuted ? <Mic size={16} /> : <MicOff size={16} />}
+                                  </button>
+                                  <button onClick={() => handleDeleteUser(u.id)} title="Xóa" className="p-2 bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-all">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {isLoading && <div className="p-12 text-center text-slate-500 dark:text-slate-400 font-medium animate-pulse">Đang tải dữ liệu...</div>}
+                  </div>
+                </div>
+              )}
 
-        {activeTab === 'assignments' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Bài tập</h2>
-              <button
-                onClick={() => setShowAddAssignment(true)}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus size={20} /> Tạo bài tập
-              </button>
-            </div>
+              {activeTab === 'resources' && (
+                <div className="space-y-6 h-full flex flex-col">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Kho tài liệu</h2>
+                  <ResourceLibrary />
+                </div>
+              )}
 
-            {showAddAssignment && (
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <h3 className="text-lg font-semibold mb-4 dark:text-white">Tạo bài tập mới</h3>
-                <form onSubmit={handleCreateAssignment} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tiêu đề</label>
-                    <input
-                      type="text"
-                      required
-                      className="mt-1 block w-full px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                      value={newAssignment.title}
-                      onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Mô tả</label>
-                    <textarea
-                      required
-                      className="mt-1 block w-full px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                      rows={3}
-                      value={newAssignment.description}
-                      onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
-                    ></textarea>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Hạn chót</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      className="mt-1 block w-full px-4 py-2 border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                      value={newAssignment.deadline}
-                      onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddAssignment(false)}
-                      className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                    >
-                      Hủy
+              {activeTab === 'assignments' && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Bài tập</h2>
+                    <button onClick={() => setShowAddAssignment(!showAddAssignment)} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/25 font-semibold">
+                      <Plus size={20} /> Tạo bài tập
                     </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                    >
-                      Đăng bài tập
-                    </button>
                   </div>
-                </form>
-              </div>
-            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 h-40 italic">
-                Chưa có danh sách bài tập...
-              </div>
-            </div>
-          </div>
-        )}
+                  <AnimatePresence>
+                    {showAddAssignment && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 mb-6">
+                          <h3 className="text-xl font-bold mb-6 dark:text-white flex items-center gap-2"><BookOpen className="text-indigo-500"/> Tạo bài tập mới</h3>
+                          <form onSubmit={handleCreateAssignment} className="space-y-5">
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tiêu đề</label>
+                              <input type="text" required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newAssignment.title} onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Mô tả chi tiết</label>
+                              <textarea required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" rows={4} value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}></textarea>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Hạn nộp</label>
+                              <input type="datetime-local" required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400 color-scheme-light dark:color-scheme-dark" value={newAssignment.deadline} onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })} />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                              <button type="button" onClick={() => setShowAddAssignment(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors">Hủy bỏ</button>
+                              <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-105 active:scale-95">Đăng bài tập</button>
+                            </div>
+                          </form>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-        {activeTab === 'chat' && (
-          <div className="h-[calc(100vh-120px)] flex flex-col">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Chat nhóm</h2>
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
-              <Chat />
-            </div>
-          </div>
-        )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-10 rounded-3xl shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 h-64 border-dashed">
+                      <BookOpen size={48} className="mb-4 opacity-30" />
+                      <p className="font-medium">Chưa có danh sách bài tập được hiển thị...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'chat' && (
+                <div className="h-full flex flex-col pb-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-4 sm:mb-6">Phòng Chat</h2>
+                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-[500px]">
+                    <Chat />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

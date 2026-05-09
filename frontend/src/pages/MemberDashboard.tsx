@@ -98,8 +98,12 @@ const MemberDashboard: React.FC = () => {
 
       toast.loading('AI đang phân tích bài làm...', { id: loadingToast });
 
+      // FORCE API VERSION v1 to avoid 404 error on v1beta
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel(
+        { model: "gemini-1.5-flash" },
+        { apiVersion: "v1" }
+      );
 
       const prompt = `You are a strict programming judge.
 Evaluate the code for assignment: "${selectedAssignment.title}".

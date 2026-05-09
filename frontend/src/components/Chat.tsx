@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Send, User as UserIcon, Shield, Trash2 } from 'lucide-react';
+import { Send, Shield, Trash2 } from 'lucide-react';
 
 const Chat: React.FC = () => {
   const { user, accessToken } = useAuth();

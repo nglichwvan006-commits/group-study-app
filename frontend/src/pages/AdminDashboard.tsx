@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, AlertTriangle, Plus } from 'lucide-react';
+import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus } from 'lucide-react';
 import Chat from '../components/Chat';
 
 const AdminDashboard: React.FC = () => {

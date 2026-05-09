@@ -7,6 +7,7 @@ import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MemberDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
@@ -77,30 +78,32 @@ const MemberDashboard: React.FC = () => {
     if (!selectedAssignment) return;
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Đang gửi code và khởi tạo AI chấm điểm...');
+    const loadingToast = toast.loading('Đang gửi bài và bắt đầu chấm điểm...');
     
     try {
-      // 1. Save code to backend first
+      // 1. Save code to backend
       const saveRes = await api.post('/assignments/submit', {
         assignmentId: selectedAssignment.id,
         content: submissionContent,
       });
       const submissionId = saveRes.data.id;
 
-      // 2. Perform AI Grading directly on the Frontend
+      // 2. AI Grading via Official SDK
       const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!geminiKey) {
-        toast.error('Cảnh báo: Chưa cấu hình VITE_GEMINI_API_KEY trên Vercel. Sẽ đợi Backend chấm điểm thay.', { id: loadingToast, duration: 5000 });
-        setSelectedAssignment(null);
+        toast.error('Chưa cấu hình VITE_GEMINI_API_KEY.', { id: loadingToast });
         fetchMySubmissions();
         return;
       }
 
-      toast.loading('AI đang phân tích code của bạn...', { id: loadingToast });
+      toast.loading('AI đang phân tích bài làm...', { id: loadingToast });
+
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `You are a strict programming judge.
-Evaluate the following solution for the assignment: "${selectedAssignment.title}".
-Return ONLY a raw JSON object. NO markdown, NO \`\`\`json blocks.
+Evaluate the code for assignment: "${selectedAssignment.title}".
+Return ONLY a raw JSON object. No explanation.
 
 {
   "score": number,
@@ -108,42 +111,35 @@ Return ONLY a raw JSON object. NO markdown, NO \`\`\`json blocks.
 }
 
 Input:
-- Requirements: ${selectedAssignment.description}
+- Goal: ${selectedAssignment.description}
 - Language: ${selectedAssignment.language}
-- Max Score: ${selectedAssignment.maxScore}
+- Max Points: ${selectedAssignment.maxScore}
 - Student Code:
 ${submissionContent}`;
 
-      const aiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-      const aiRes = await fetch(aiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-
-      if (!aiRes.ok) throw new Error("AI Service Unavailable");
-
-      const aiData = await aiRes.json();
-      const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text().trim();
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("AI format error");
+      
+      if (!jsonMatch) throw new Error("AI trả về định dạng sai");
       
       const { score, feedback } = JSON.parse(jsonMatch[0]);
 
-      // 3. Send AI result back to backend
+      // 3. Update backend
       await api.patch(`/assignments/submissions/${submissionId}/ai-result`, {
         score: Math.min(score, selectedAssignment.maxScore),
         feedback: feedback
       });
 
-      toast.success(`Đã chấm xong! Bạn đạt ${score} điểm.`, { id: loadingToast });
+      toast.success(`Xong! Bạn đạt ${score}/${selectedAssignment.maxScore} điểm.`, { id: loadingToast });
       setSubmissionContent('');
       setSelectedAssignment(null);
       fetchMySubmissions();
+      fetchLeaderboard();
       
     } catch (error: any) {
-      console.error(error);
-      toast.error('Lỗi khi nộp bài hoặc chấm điểm: ' + error.message, { id: loadingToast });
+      console.error("AI Error:", error);
+      toast.error('Lỗi: ' + (error.message || 'Không thể chấm điểm'), { id: loadingToast });
     } finally {
       setIsSubmitting(false);
     }
@@ -174,7 +170,7 @@ ${submissionContent}`;
   const unreadNotifs = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] flex transition-colors duration-500 overflow-hidden font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] flex transition-colors duration-500 overflow-hidden font-sans text-slate-900 dark:text-white">
       
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-40">
@@ -182,7 +178,7 @@ ${submissionContent}`;
           <div className="w-8 h-8 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
             <BookOpen className="text-white" size={16} />
           </div>
-          <span className="font-bold text-slate-900 dark:text-white">Study Space</span>
+          <span className="font-bold">Study Space</span>
         </div>
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-300">
           <Menu size={24} />
@@ -206,7 +202,7 @@ ${submissionContent}`;
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="p-6 md:p-8 pt-8 md:pt-8 flex justify-between items-center">
+        <div className="p-6 md:p-8 pt-8 md:pt-8 flex justify-between items-center text-slate-900 dark:text-white">
           <div>
             <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
               <BookOpen className="text-indigo-600" size={24} /> Study Space
@@ -262,9 +258,9 @@ ${submissionContent}`;
             >
               {activeTab === 'assignments' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Thử thách Lập trình</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Thử thách Lập trình</h2>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-slate-900 dark:text-white">
                     <div className="lg:col-span-4 space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
                       {assignments.map((a, index) => {
                         const mySub = mySubmissions.find(s => s.assignmentId === a.id);
@@ -292,7 +288,7 @@ ${submissionContent}`;
                               </span>
                             )}
                           </div>
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">{a.title}</h3>
+                          <h3 className="text-base font-bold group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">{a.title}</h3>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                               <Trophy size={12} className="inline mr-1 text-amber-500"/> {a.maxScore} pts
@@ -303,11 +299,6 @@ ${submissionContent}`;
                           </div>
                         </motion.div>
                       )})}
-                      {assignments.length === 0 && (
-                        <div className="p-8 text-center bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 border-dashed">
-                          <p className="text-slate-500 font-medium">Chưa có thử thách nào.</p>
-                        </div>
-                      )}
                     </div>
 
                     <div className="lg:col-span-8">
@@ -320,13 +311,13 @@ ${submissionContent}`;
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl p-6 rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50"
                           >
-                            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">{selectedAssignment.title}</h3>
+                            <h3 className="text-xl font-extrabold tracking-tight">{selectedAssignment.title}</h3>
                             <div className="flex gap-3 mt-3 mb-4 text-xs font-bold text-slate-500">
                               <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">Ngôn ngữ: {selectedAssignment.language}</span>
-                              <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded">Max Score: {selectedAssignment.maxScore}</span>
+                              <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded">Max: {selectedAssignment.maxScore} pts</span>
                               <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded"><Clock size={12} className="inline mr-1"/>{new Date(selectedAssignment.deadline).toLocaleDateString()}</span>
                             </div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-4">
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 text-sm leading-relaxed whitespace-pre-wrap mb-4">
                               {selectedAssignment.description}
                             </div>
                             
@@ -334,16 +325,19 @@ ${submissionContent}`;
                               const sub = mySubmissions.find(s => s.assignmentId === selectedAssignment.id);
                               if (sub) {
                                 return (
-                                  <div className="mb-4 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/10">
+                                  <div className="mb-4 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/10 shadow-sm">
                                     <h4 className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
                                       {sub.status === 'PENDING' && <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>}
                                       {sub.status === 'GRADED' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
-                                      Trạng thái: {sub.status}
+                                      Trạng thái: {sub.status === 'GRADED' ? 'Đã chấm điểm' : sub.status === 'PENDING' ? 'Đang chờ chấm' : 'Thất bại'}
                                     </h4>
                                     {sub.status === 'GRADED' && (
                                       <div className="mt-2">
                                         <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{sub.score} <span className="text-sm text-slate-500">/ {selectedAssignment.maxScore} pts</span></p>
-                                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 bg-white/50 dark:bg-slate-900/50 p-3 rounded-lg whitespace-pre-wrap border border-white/50">{sub.feedback}</p>
+                                        <div className="text-sm mt-2 bg-white/70 dark:bg-slate-900/70 p-3 rounded-lg border border-indigo-100 dark:border-slate-800">
+                                            <p className="font-bold text-slate-500 text-[10px] uppercase mb-1">Nhận xét từ AI:</p>
+                                            <p className="text-slate-700 dark:text-slate-200 italic">"{sub.feedback}"</p>
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -353,7 +347,7 @@ ${submissionContent}`;
                             })()}
 
                             <form onSubmit={handleSubmitAssignment} className="space-y-4">
-                              <div className="h-[400px] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                              <div className="h-[400px] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-inner">
                                 <Editor
                                   height="100%"
                                   language={selectedAssignment.language.toLowerCase()}
@@ -365,18 +359,19 @@ ${submissionContent}`;
                                     fontSize: 14,
                                     padding: { top: 16 },
                                     scrollBeyondLastLine: false,
+                                    automaticLayout: true,
                                   }}
                                 />
                               </div>
                               <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-[1.01] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
+                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-500/25 transform hover:scale-[1.01] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
                               >
                                 {isSubmitting ? (
-                                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang gửi & Chấm điểm...</>
+                                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang chấm điểm...</>
                                 ) : (
-                                  <><CheckCircle size={20} /> Gửi Code cho AI chấm điểm</>
+                                  <><CheckCircle size={20} /> Nộp bài & Chấm điểm bằng AI</>
                                 )}
                               </button>
                             </form>
@@ -386,7 +381,7 @@ ${submissionContent}`;
                             <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
                               <BookOpen size={64} className="mb-6 opacity-20 text-indigo-500" />
                             </motion.div>
-                            <p className="text-lg font-medium text-slate-500 dark:text-slate-400">Chọn một thử thách để bắt đầu code</p>
+                            <p className="text-lg font-medium text-slate-500 dark:text-slate-400 font-sans">Chọn một thử thách để bắt đầu code</p>
                           </div>
                         )}
                       </AnimatePresence>
@@ -397,7 +392,7 @@ ${submissionContent}`;
 
               {activeTab === 'leaderboard' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Bảng xếp hạng toàn cầu</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Bảng xếp hạng toàn cầu</h2>
                   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden p-6 sm:p-8">
                     {leaderboard.length === 0 ? (
                       <p className="text-slate-500 text-center py-10">Chưa có ai ghi danh trên bảng vàng.</p>
@@ -416,7 +411,7 @@ ${submissionContent}`;
                                 #{index + 1}
                               </div>
                               <div>
-                                <p className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg">{u.name} {u.id === user?.id && <span className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded ml-2">BẠN</span>}</p>
+                                <p className="font-extrabold text-base sm:text-lg">{u.name} {u.id === user?.id && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full ml-2">BẠN</span>}</p>
                                 <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 mt-1">LV.{u.level} • Huy hiệu: <span className="text-indigo-500 dark:text-indigo-400">{u.badge}</span></p>
                               </div>
                             </div>
@@ -433,17 +428,20 @@ ${submissionContent}`;
 
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Thông báo</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Thông báo</h2>
                   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden p-6">
                     {notifications.length === 0 ? (
                       <p className="text-slate-500 text-center py-10">Bạn không có thông báo nào.</p>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-3 max-w-3xl mx-auto">
                         {notifications.map((n, i) => (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i*0.05 }} key={n.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                            <h4 className="font-bold text-slate-900 dark:text-white">{n.title}</h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{n.message}</p>
-                            <p className="text-xs text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i*0.05 }} key={n.id} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-shadow">
+                            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                {!n.isRead && <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>}
+                                {n.title}
+                            </h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{n.message}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-wider">{new Date(n.createdAt).toLocaleString('vi-VN')}</p>
                           </motion.div>
                         ))}
                       </div>
@@ -454,14 +452,14 @@ ${submissionContent}`;
 
               {activeTab === 'resources' && (
                 <div className="space-y-6 h-full flex flex-col">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Kho tài liệu</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Kho tài liệu</h2>
                   <ResourceLibrary />
                 </div>
               )}
 
               {activeTab === 'chat' && (
                 <div className="h-[calc(100vh-120px)] flex flex-col pb-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-4 sm:mb-6">Phòng Chat</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4 sm:mb-6">Phòng Chat</h2>
                   <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-[500px]">
                     <Chat />
                   </div>

@@ -46,7 +46,6 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    // Check if user already submitted (optional based on requirements, but let's allow it or overwrite. I'll just create a new one for now)
     const submission = await prisma.submission.create({
       data: {
         content,
@@ -56,7 +55,7 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
       },
     });
     
-    // Trigger async grading
+    // We still keep the backend async as a fallback, but the frontend will usually win
     setTimeout(() => {
       gradeSubmissionAsync(submission.id);
     }, 0);
@@ -98,3 +97,56 @@ export const getMySubmissions = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const submitAIResult = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { score, feedback } = req.body;
+  const userId = req.user?.id;
+
+  try {
+    const submission = await prisma.submission.findUnique({
+      where: { id, userId },
+      include: { assignment: true }
+    });
+
+    if (!submission) return res.status(404).json({ message: "Submission not found" });
+    // Allow re-submitting if status was FAILED
+    if (submission.status === "GRADED") return res.status(400).json({ message: "Already graded" });
+
+    const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
+
+    await prisma.$transaction(async (tx) => {
+      await tx.submission.update({
+        where: { id },
+        data: {
+          score: clampedScore,
+          feedback: feedback,
+          status: "GRADED",
+          gradedAt: new Date(),
+        },
+      });
+
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (user) {
+        const newPoints = user.totalPoints + clampedScore;
+        const newLevel = Math.floor(newPoints / 100) + 1;
+        
+        let newBadge = user.badge;
+        if (newPoints >= 1000) newBadge = "Master";
+        else if (newPoints >= 500) newBadge = "Diamond";
+        else if (newPoints >= 300) newBadge = "Platinum";
+        else if (newPoints >= 150) newBadge = "Gold";
+        else if (newPoints >= 50) newBadge = "Silver";
+        else newBadge = "Bronze";
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
+        });
+      }
+    });
+
+    res.json({ message: "AI score saved successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error saving AI result" });
+  }
+};

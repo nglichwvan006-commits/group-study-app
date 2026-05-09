@@ -77,18 +77,73 @@ const MemberDashboard: React.FC = () => {
     if (!selectedAssignment) return;
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Đang nộp code và chờ AI chấm điểm...');
+    const loadingToast = toast.loading('Đang gửi code và khởi tạo AI chấm điểm...');
+    
     try {
-      await api.post('/assignments/submit', {
+      // 1. Save code to backend first
+      const saveRes = await api.post('/assignments/submit', {
         assignmentId: selectedAssignment.id,
         content: submissionContent,
       });
-      toast.success('Nộp bài thành công! AI đang chấm điểm ngầm.', { id: loadingToast });
+      const submissionId = saveRes.data.id;
+
+      // 2. Perform AI Grading directly on the Frontend
+      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!geminiKey) {
+        toast.error('Cảnh báo: Chưa cấu hình VITE_GEMINI_API_KEY trên Vercel. Sẽ đợi Backend chấm điểm thay.', { id: loadingToast, duration: 5000 });
+        setSelectedAssignment(null);
+        fetchMySubmissions();
+        return;
+      }
+
+      toast.loading('AI đang phân tích code của bạn...', { id: loadingToast });
+
+      const prompt = `You are a strict programming judge.
+Evaluate the following solution for the assignment: "${selectedAssignment.title}".
+Return ONLY a raw JSON object. NO markdown, NO \`\`\`json blocks.
+
+{
+  "score": number,
+  "feedback": "string"
+}
+
+Input:
+- Requirements: ${selectedAssignment.description}
+- Language: ${selectedAssignment.language}
+- Max Score: ${selectedAssignment.maxScore}
+- Student Code:
+${submissionContent}`;
+
+      const aiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const aiRes = await fetch(aiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+
+      if (!aiRes.ok) throw new Error("AI Service Unavailable");
+
+      const aiData = await aiRes.json();
+      const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("AI format error");
+      
+      const { score, feedback } = JSON.parse(jsonMatch[0]);
+
+      // 3. Send AI result back to backend
+      await api.patch(`/assignments/submissions/${submissionId}/ai-result`, {
+        score: Math.min(score, selectedAssignment.maxScore),
+        feedback: feedback
+      });
+
+      toast.success(`Đã chấm xong! Bạn đạt ${score} điểm.`, { id: loadingToast });
       setSubmissionContent('');
       setSelectedAssignment(null);
       fetchMySubmissions();
-    } catch (error) {
-      toast.error('Lỗi khi nộp bài', { id: loadingToast });
+      
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Lỗi khi nộp bài hoặc chấm điểm: ' + error.message, { id: loadingToast });
     } finally {
       setIsSubmitting(false);
     }

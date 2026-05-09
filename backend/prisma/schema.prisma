@@ -15,6 +15,12 @@ model User {
   name          String
   role          String         @default("MEMBER")
   isMuted       Boolean        @default(false)
+  
+  // Ranking fields
+  totalPoints   Int            @default(0)
+  level         Int            @default(1)
+  badge         String         @default("Bronze")
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   assignments   Assignment[]   @relation("CreatedAssignments")
@@ -23,6 +29,7 @@ model User {
   warnings      Warning[]
   refreshTokens RefreshToken[]
   resources     Resource[]
+  notifications Notification[]
 }
 
 model Resource {
@@ -49,6 +56,12 @@ model Assignment {
   title       String
   description String
   deadline    DateTime
+  
+  // Coding features
+  language    String       @default("javascript")
+  maxScore    Int          @default(100)
+  rubric      String       @default("General correctness and code quality.")
+
   creatorId   String
   creator     User         @relation("CreatedAssignments", fields: [creatorId], references: [id])
   submissions Submission[]
@@ -63,7 +76,24 @@ model Submission {
   user         User       @relation(fields: [userId], references: [id])
   assignmentId String
   assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  
+  // Grading fields
+  score        Int?
+  feedback     String?
+  gradedAt     DateTime?
+  status       String     @default("PENDING") // PENDING, GRADED, FAILED
+
   createdAt    DateTime   @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model ChatMessage {

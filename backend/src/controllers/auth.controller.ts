@@ -99,7 +99,7 @@ export const getMe = async (req: any, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, email: true, name: true, role: true, isMuted: true },
+      select: { id: true, email: true, name: true, role: true, isMuted: true, totalPoints: true, level: true, badge: true },
     });
     res.json(user);
   } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X } from 'lucide-react';
+import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,8 +9,9 @@ import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard'>('users');
   const [users, setUsers] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -20,10 +21,11 @@ const AdminDashboard: React.FC = () => {
 
   // Assignment form
   const [showAddAssignment, setShowAddAssignment] = useState(false);
-  const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '' });
+  const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', language: 'javascript', maxScore: 100, rubric: '' });
 
   useEffect(() => {
     fetchUsers();
+    fetchLeaderboard();
   }, []);
 
   const fetchUsers = async () => {
@@ -35,6 +37,15 @@ const AdminDashboard: React.FC = () => {
       toast.error('Lỗi khi tải danh sách người dùng');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await api.get('/ranking/leaderboard');
+      setLeaderboard(response.data);
+    } catch (error) {
+      console.error('Error fetching leaderboard', error);
     }
   };
 
@@ -59,7 +70,7 @@ const AdminDashboard: React.FC = () => {
       await api.post('/assignments', newAssignment);
       toast.success('Bài tập đã được đăng!', { id: loadingToast });
       setShowAddAssignment(false);
-      setNewAssignment({ title: '', description: '', deadline: '' });
+      setNewAssignment({ title: '', description: '', deadline: '', language: 'javascript', maxScore: 100, rubric: '' });
     } catch (error) {
       toast.error('Lỗi khi tạo bài tập', { id: loadingToast });
     }
@@ -152,6 +163,7 @@ const AdminDashboard: React.FC = () => {
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavItem id="users" icon={User} label="Quản lý người dùng" />
           <NavItem id="assignments" icon={BookOpen} label="Bài tập" />
+          <NavItem id="leaderboard" icon={Trophy} label="Bảng xếp hạng" />
           <NavItem id="resources" icon={FileText} label="Kho tài liệu" />
           <NavItem id="chat" icon={MessageSquare} label="Chat nhóm" />
         </nav>
@@ -286,6 +298,32 @@ const AdminDashboard: React.FC = () => {
                 </div>
               )}
 
+              {activeTab === 'leaderboard' && (
+                <div className="space-y-6">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Bảng xếp hạng</h2>
+                  <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden p-6">
+                    {leaderboard.length === 0 ? (
+                      <p className="text-slate-500 text-center py-10">Chưa có thành viên nào trên bảng xếp hạng.</p>
+                    ) : (
+                      <ul className="space-y-4">
+                        {leaderboard.map((u, index) => (
+                          <li key={u.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                            <div className="flex items-center gap-4">
+                              <span className={`text-xl font-black w-8 text-center ${index === 0 ? 'text-amber-400' : index === 1 ? 'text-slate-400' : index === 2 ? 'text-amber-700' : 'text-slate-300'}`}>#{index + 1}</span>
+                              <div>
+                                <p className="font-bold text-slate-900 dark:text-white">{u.name}</p>
+                                <p className="text-xs text-slate-500">Cấp độ {u.level} • Huy hiệu: {u.badge}</p>
+                              </div>
+                            </div>
+                            <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{u.totalPoints} <span className="text-sm font-medium text-slate-400">pts</span></div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'resources' && (
                 <div className="space-y-6 h-full flex flex-col">
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Kho tài liệu</h2>
@@ -296,7 +334,7 @@ const AdminDashboard: React.FC = () => {
               {activeTab === 'assignments' && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Bài tập</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Bài tập (Lập trình)</h2>
                     <button onClick={() => setShowAddAssignment(!showAddAssignment)} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/25 font-semibold">
                       <Plus size={20} /> Tạo bài tập
                     </button>
@@ -306,21 +344,33 @@ const AdminDashboard: React.FC = () => {
                     {showAddAssignment && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 mb-6">
-                          <h3 className="text-xl font-bold mb-6 dark:text-white flex items-center gap-2"><BookOpen className="text-indigo-500"/> Tạo bài tập mới</h3>
-                          <form onSubmit={handleCreateAssignment} className="space-y-5">
-                            <div>
+                          <h3 className="text-xl font-bold mb-6 dark:text-white flex items-center gap-2"><BookOpen className="text-indigo-500"/> Thiết lập bài tập chấm điểm bằng AI</h3>
+                          <form onSubmit={handleCreateAssignment} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tiêu đề</label>
                               <input type="text" required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newAssignment.title} onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })} />
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Mô tả chi tiết</label>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Mô tả & Yêu cầu đề bài</label>
                               <textarea required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" rows={4} value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}></textarea>
                             </div>
                             <div>
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Ngôn ngữ (VD: javascript, python)</label>
+                              <input type="text" className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newAssignment.language} onChange={(e) => setNewAssignment({ ...newAssignment, language: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Điểm tối đa</label>
+                              <input type="number" required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" value={newAssignment.maxScore} onChange={(e) => setNewAssignment({ ...newAssignment, maxScore: parseInt(e.target.value) })} />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tiêu chí chấm điểm (Rubric cho AI)</label>
+                              <textarea required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400" rows={2} value={newAssignment.rubric} onChange={(e) => setNewAssignment({ ...newAssignment, rubric: e.target.value })}></textarea>
+                            </div>
+                            <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Hạn nộp</label>
                               <input type="datetime-local" required className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400 color-scheme-light dark:color-scheme-dark" value={newAssignment.deadline} onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })} />
                             </div>
-                            <div className="flex justify-end gap-3 pt-2">
+                            <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                               <button type="button" onClick={() => setShowAddAssignment(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors">Hủy bỏ</button>
                               <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-105 active:scale-95">Đăng bài tập</button>
                             </div>
@@ -333,7 +383,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="col-span-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-10 rounded-3xl shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 h-64 border-dashed">
                       <BookOpen size={48} className="mb-4 opacity-30" />
-                      <p className="font-medium">Chưa có danh sách bài tập được hiển thị...</p>
+                      <p className="font-medium">Vui lòng tải lại hoặc xem danh sách bài tập (sẽ hiển thị ở đây).</p>
                     </div>
                   </div>
                 </div>

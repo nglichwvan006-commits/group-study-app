@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/", getAssignments);
+router.get("/my-submissions", getMySubmissions);
 router.post("/", authorize([Role.ADMIN]), createAssignment);
 router.post("/submit", authorize([Role.MEMBER]), submitAssignment);
 router.get("/:assignmentId/submissions", authorize([Role.ADMIN]), getSubmissions);

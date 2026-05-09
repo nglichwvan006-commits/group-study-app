@@ -5,6 +5,9 @@ interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'MEMBER';
+  totalPoints?: number;
+  level?: number;
+  badge?: string;
 }
 
 interface AuthContextType {

@@ -14,14 +14,14 @@ export class GeminiCliGradingService {
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("SERVER_MISSING_API_KEY: Bạn chưa điền GEMINI_API_KEY trên Render.");
+        throw new Error("SERVER_MISSING_API_KEY: Chưa điền GEMINI_API_KEY trên Render.");
       }
 
-      console.log(`[AI Grading] Đang xử lý bài nộp: ${submissionId}`);
+      console.log(`[AI Grading] Đang chấm bài bằng Gemini Pro (v1): ${submissionId}`);
 
       const prompt = `You are a strict programming judge.
 Evaluate this ${submission.assignment.language} code.
-Return ONLY valid JSON.
+Return ONLY a raw JSON object. No explanations.
 
 {
   "score": number,
@@ -33,8 +33,8 @@ Max Score: ${submission.assignment.maxScore}
 Code:
 ${submission.content}`;
 
-      // GỌI TRỰC TIẾP API GOOGLE (Cách thô sơ nhưng ổn định nhất)
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      // SỬ DỤNG MODEL PRO VÀ API V1 (ỔN ĐỊNH TUYỆT ĐỐI)
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
       
       const response = await fetch(url, {
         method: "POST",
@@ -53,19 +53,17 @@ ${submission.content}`;
 
       const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (!aiText) {
-        throw new Error("AI_EMPTY_RESPONSE: Google không trả về nội dung chấm điểm.");
+        throw new Error("AI_EMPTY_RESPONSE: AI không trả về kết quả.");
       }
 
-      // Trích xuất JSON an toàn
       const jsonMatch = aiText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error(`FORMAT_ERROR: AI trả về văn bản thay vì JSON. Nội dung: ${aiText.substring(0, 100)}`);
+        throw new Error(`FORMAT_ERROR: Kết quả không phải JSON.`);
       }
 
       const result = JSON.parse(jsonMatch[0]);
       const finalScore = Math.max(0, Math.min(Number(result.score) || 0, submission.assignment.maxScore));
 
-      // LƯU KẾT QUẢ VÀO DATABASE TRONG MỘT TRANSACTION
       await prisma.$transaction(async (tx) => {
         await tx.submission.update({
           where: { id: submissionId },
@@ -96,7 +94,6 @@ ${submission.content}`;
         }
       });
 
-      // Gửi thông báo
       await prisma.notification.create({
         data: {
           userId: submission.userId,
@@ -105,18 +102,15 @@ ${submission.content}`;
         },
       });
 
-      console.log(`[AI Grading] Chấm điểm thành công: ${finalScore} pts`);
+      console.log(`[AI Grading] Thành công: ${finalScore} pts`);
 
     } catch (error: any) {
       console.error(`[AI Grading] THẤT BẠI:`, error.message);
-      
-      // LƯU LỖI CHI TIẾT VÀO DATABASE ĐỂ NGƯỜI DÙNG XEM ĐƯỢC
       await prisma.submission.update({
         where: { id: submissionId },
         data: {
           status: "FAILED",
-          feedback: `LỖI HỆ THỐNG: ${error.message}. 
-          Chi tiết phản hồi từ Google: ${lastRawResponse.substring(0, 500)}`
+          feedback: `LỖI: ${error.message}`
         },
       });
     }

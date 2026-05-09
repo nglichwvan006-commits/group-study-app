@@ -13,22 +13,23 @@ const AuthSuccess: React.FC = () => {
     const refreshToken = searchParams.get('refreshToken');
 
     if (accessToken && refreshToken) {
-      // Get user info from the token or a separate endpoint
-      // For now, I'll fetch user info from an endpoint I'll add to the backend
       const fetchUser = async () => {
         try {
-          const response = await axios.get('http://localhost:5000/api/auth/me', {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          const response = await axios.get(`${apiUrl}/auth/me`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
           login(accessToken, refreshToken, response.data);
           navigate('/');
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to fetch user after OAuth', error);
+          alert(`Lỗi xác thực: ${error.response?.data?.message || error.message}`);
           navigate('/login?error=auth_failed');
         }
       };
       fetchUser();
     } else {
+      alert("Lỗi: Không tìm thấy mã truy cập (Token) từ Google.");
       navigate('/login');
     }
   }, [searchParams, login, navigate]);

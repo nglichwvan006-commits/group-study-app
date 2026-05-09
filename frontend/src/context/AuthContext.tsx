@@ -13,6 +13,8 @@ interface AuthContextType {
   login: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode.toString());
+  }, [darkMode]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -48,8 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, accessToken, login, logout, isLoading, darkMode, toggleDarkMode }}>
       {children}
     </AuthContext.Provider>
   );

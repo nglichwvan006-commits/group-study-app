@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
 import assignmentRoutes from "./routes/assignment.routes";
 import chatRoutes from "./routes/chat.routes";
+import resourceRoutes from "./routes/resource.routes";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/resources", resourceRoutes);
 
 app.get("/", (req, res) => {
   res.send("Group Study API is running");

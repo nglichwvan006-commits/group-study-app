@@ -25,7 +25,11 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) {
+      alert("Lỗi: Chưa cấu hình địa chỉ Backend (VITE_API_URL). Vui lòng kiểm tra lại Vercel.");
+      return;
+    }
     window.location.href = `${apiUrl}/auth/google`;
   };
 

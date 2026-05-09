@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL;
+
+if (!apiUrl) {
+  console.error("VITE_API_URL is not defined! Please check your Vercel Environment Variables.");
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: apiUrl,
 });
 
 api.interceptors.request.use((config) => {

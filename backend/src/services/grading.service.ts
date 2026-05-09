@@ -16,16 +16,16 @@ export const gradeSubmissionAsync = async (submissionId: string) => {
       console.error("GEMINI_API_KEY is not configured.");
       await prisma.submission.update({
         where: { id: submissionId },
-        data: { status: "FAILED", feedback: "Lỗi hệ thống: Chưa cấu hình AI." },
+        data: { status: "FAILED", feedback: "Lỗi hệ thống: Chưa cấu hình API Key cho AI." },
       });
       return;
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `You are a strict programming judge.
 Evaluate the following solution based on the assignment requirements.
-Return ONLY valid JSON without Markdown blocks (no \`\`\`json).
+IMPORTANT: Return ONLY valid JSON. Do not include any explanation or markdown formatting.
 
 {
   "score": number,
@@ -46,11 +46,12 @@ Input:
 ${submission.content}`;
 
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    const responseText = result.response.text().trim();
     
+    // Improved JSON extraction
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-       throw new Error("AI did not return valid JSON");
+       throw new Error(`AI returned invalid format: ${responseText.substring(0, 100)}`);
     }
 
     const gradingResult = JSON.parse(jsonMatch[0]);
@@ -104,11 +105,12 @@ ${submission.content}`;
       },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Grading failed for submission ${submissionId}:`, error);
+    const errorMessage = error.message || "Lỗi không xác định.";
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { status: "FAILED", feedback: "Lỗi trong quá trình chấm điểm bằng AI." },
+      data: { status: "FAILED", feedback: `Lỗi AI: ${errorMessage}` },
     });
   }
 };

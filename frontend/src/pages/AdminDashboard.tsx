@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock, Key } from 'lucide-react';
+import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock, Key, Search } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -147,6 +147,27 @@ const AdminDashboard: React.FC = () => {
       toast.error(error.response?.data?.message || 'Lỗi khi reset điểm', { id: loadingToast });
     }
   };
+
+  const handleResetPassword = async (id: string) => {
+    const newPassword = window.prompt('Nhập mật khẩu mới cho người dùng:');
+    if (!newPassword || newPassword.trim().length < 6) {
+      if (newPassword !== null) toast.error('Mật khẩu phải có ít nhất 6 ký tự!');
+      return;
+    }
+
+    const loadingToast = toast.loading('Đang đổi mật khẩu...');
+    try {
+      await api.patch(`/admin/users/${id}/password`, { password: newPassword });
+      toast.success('Đã đổi mật khẩu thành công!', { id: loadingToast });
+    } catch (error) {
+      toast.error('Lỗi khi đổi mật khẩu', { id: loadingToast });
+    }
+  };
+
+  const filteredUsers = users.filter((u: any) => 
+    u.name?.toLowerCase().includes(userSearch.toLowerCase()) || 
+    u.email?.toLowerCase().includes(userSearch.toLowerCase())
+  );
 
   const handleResetUserPoints = async (id: string, name: string) => {
     if (window.confirm(`Bạn có chắc chắn muốn reset điểm của người dùng ${name} về 0?`)) {

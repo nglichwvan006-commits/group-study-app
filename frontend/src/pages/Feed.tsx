@@ -150,6 +150,29 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
   );
 };
 
+const PostSkeleton = () => (
+  <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 animate-pulse">
+    <div className="flex justify-between items-start mb-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+        <div className="space-y-2">
+          <div className="w-24 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+          <div className="w-16 h-2 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-3 mb-4">
+      <div className="w-full h-4 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+      <div className="w-5/6 h-4 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+    </div>
+    <div className="w-full h-48 bg-slate-50 dark:bg-slate-800/30 rounded-3xl mb-4"></div>
+    <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex gap-6">
+      <div className="w-20 h-4 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+      <div className="w-20 h-4 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+    </div>
+  </div>
+);
+
 const Feed: React.FC = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -157,17 +180,21 @@ const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchFeed();
   }, []);
 
   const fetchFeed = async () => {
+    setIsLoading(true);
     try {
       const res = await api.get('/posts/feed');
       setPosts(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       toast.error('Lỗi khi tải bảng tin');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -269,11 +296,21 @@ const Feed: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-           {posts.map((p) => (
-             <PostItem key={p.id} post={p} onDelete={handleDeletePost} />
-           ))}
-           {posts.length === 0 && (
-             <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[3rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">Bảng tin đang trống.</div>
+           {isLoading ? (
+             <>
+               <PostSkeleton />
+               <PostSkeleton />
+               <PostSkeleton />
+             </>
+           ) : (
+             <>
+               {posts.map((p) => (
+                 <PostItem key={p.id} post={p} onDelete={handleDeletePost} />
+               ))}
+               {posts.length === 0 && (
+                 <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[3rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">Bảng tin đang trống.</div>
+               )}
+             </>
            )}
         </div>
       </div>

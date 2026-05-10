@@ -2,24 +2,34 @@ import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 
 export const getFeed = async (req: any, res: Response) => {
-  const { q } = req.query;
+  const { q, skip = 0, take = 20 } = req.query;
   const userId = req.user?.id;
   try {
     const posts = await (prisma as any).post.findMany({
       where: q ? {
-        content: { contains: String(q), mode: "insensitive" }
+        content: { contains: String(q) }
       } : {},
       orderBy: [
         { isPinned: "desc" },
         { createdAt: "desc" }
       ],
-      include: {
+      select: {
+        id: true,
+        content: true,
+        imageUrl: true,
+        isPinned: true,
+        createdAt: true,
+        userId: true,
         user: {
-          select: { id: true, name: true, badge: true, level: true, role: true }
+          select: { id: true, name: true, badge: true, level: true, avatarUrl: true, role: true }
         },
         comments: {
-          include: {
-            user: { select: { id: true, name: true } }
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            userId: true,
+            user: { select: { id: true, name: true, avatarUrl: true } }
           },
           orderBy: { createdAt: "asc" }
         },
@@ -27,15 +37,15 @@ export const getFeed = async (req: any, res: Response) => {
           select: { userId: true }
         }
       },
-      take: 50,
+      skip: Number(skip),
+      take: Number(take),
     });
 
-    // Format posts to include like count and current user's like status
     const formattedPosts = posts.map((p: any) => ({
       ...p,
       likeCount: p.likes.length,
       isLiked: userId ? p.likes.some((l: any) => l.userId === userId) : false,
-      likes: undefined // Don't send full likes array
+      likes: undefined
     }));
 
     res.json(formattedPosts);

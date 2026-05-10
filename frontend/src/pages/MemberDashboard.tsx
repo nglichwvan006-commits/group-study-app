@@ -9,6 +9,22 @@ import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
 import { useNavigate, Link } from 'react-router-dom';
 
+const AssignmentSkeleton = () => (
+  <div className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 animate-pulse">
+    <div className="flex justify-between items-center mb-3">
+      <div className="flex gap-2">
+        <div className="w-12 h-3 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+        <div className="w-12 h-3 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+      </div>
+    </div>
+    <div className="w-3/4 h-5 bg-slate-200 dark:bg-slate-800 rounded mb-4"></div>
+    <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+      <div className="w-20 h-3 bg-slate-100 dark:bg-slate-800/50 rounded"></div>
+      <div className="w-10 h-4 bg-indigo-100 dark:bg-indigo-900/30 rounded"></div>
+    </div>
+  </div>
+);
+
 const MemberDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -24,6 +40,7 @@ const MemberDashboard: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
 
   useEffect(() => {
     fetchAssignments();
@@ -33,11 +50,14 @@ const MemberDashboard: React.FC = () => {
   }, []);
 
   const fetchAssignments = async () => {
+    setIsLoadingAssignments(true);
     try {
       const response = await api.get('/assignments');
       setAssignments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       toast.error('Lỗi khi tải danh sách bài tập');
+    } finally {
+      setIsLoadingAssignments(false);
     }
   };
 
@@ -242,28 +262,39 @@ const MemberDashboard: React.FC = () => {
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     <div className="lg:col-span-4 space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                      {filteredAssignments.map((a, index) => {
-                        const mySub = mySubmissions.find(s => s.assignmentId === a.id);
-                        return (
-                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} key={a.id} onClick={() => { setSelectedAssignment(a); setSubmissionContent(mySub?.content || ''); setSelectedLanguage(a.language.toLowerCase()); }} className={`p-6 rounded-3xl border transition-all cursor-pointer shadow-sm group ${selectedAssignment?.id === a.id ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-4 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-300'}`}>
-                          <div className="flex justify-between items-center mb-3">
-                            <div className="flex gap-2">
-                               <span className="text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{a.language}</span>
-                               <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${a.difficulty === 'Master' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{a.difficulty}</span>
-                            </div>
-                            {mySub && <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${mySub.status === 'GRADED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{mySub.status}</span>}
-                          </div>
-                          <h3 className="text-lg font-extrabold line-clamp-1 group-hover:text-indigo-600 transition-colors">{a.title}</h3>
-                          <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
-                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-tighter"><Clock size={12}/> {new Date(a.deadline).toLocaleDateString()}</span>
-                            <div className="flex items-center gap-1">
-                               <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{mySub?.score || 0}</span>
-                               <span className="text-[10px] font-bold text-slate-300">/ {a.maxScore}</span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )})}
-                      {filteredAssignments.length === 0 && <div className="p-10 bg-white/50 dark:bg-slate-900/30 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 font-bold uppercase text-[10px]">Chưa có bài tập cấp độ này.</div>}
+                      {isLoadingAssignments ? (
+                        <>
+                          <AssignmentSkeleton />
+                          <AssignmentSkeleton />
+                          <AssignmentSkeleton />
+                          <AssignmentSkeleton />
+                        </>
+                      ) : (
+                        <>
+                          {filteredAssignments.map((a, index) => {
+                            const mySub = mySubmissions.find(s => s.assignmentId === a.id);
+                            return (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} key={a.id} onClick={() => { setSelectedAssignment(a); setSubmissionContent(mySub?.content || ''); setSelectedLanguage(a.language.toLowerCase()); }} className={`p-6 rounded-3xl border transition-all cursor-pointer shadow-sm group ${selectedAssignment?.id === a.id ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-4 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-300'}`}>
+                              <div className="flex justify-between items-center mb-3">
+                                <div className="flex gap-2">
+                                   <span className="text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{a.language}</span>
+                                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${a.difficulty === 'Master' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{a.difficulty}</span>
+                                </div>
+                                {mySub && <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${mySub.status === 'GRADED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{mySub.status}</span>}
+                              </div>
+                              <h3 className="text-lg font-extrabold line-clamp-1 group-hover:text-indigo-600 transition-colors">{a.title}</h3>
+                              <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-tighter"><Clock size={12}/> {new Date(a.deadline).toLocaleDateString()}</span>
+                                <div className="flex items-center gap-1">
+                                   <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{mySub?.score || 0}</span>
+                                   <span className="text-[10px] font-bold text-slate-300">/ {a.maxScore}</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )})}
+                          {filteredAssignments.length === 0 && <div className="p-10 bg-white/50 dark:bg-slate-900/30 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 font-bold uppercase text-[10px]">Chưa có bài tập cấp độ này.</div>}
+                        </>
+                      )}
                     </div>
 
                     <div className="lg:col-span-8 h-full">

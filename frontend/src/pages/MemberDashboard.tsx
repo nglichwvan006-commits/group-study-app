@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star, Trash2 } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -143,6 +143,20 @@ const MemberDashboard: React.FC = () => {
     } finally {
       setIsSubmitting(false);
       toast.dismiss(loadingToast);
+    }
+  };
+
+  const handleClearNotifications = async () => {
+    if (notifications.length === 0) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa tất cả thông báo không?')) return;
+    
+    const loadingToast = toast.loading('Đang dọn dẹp hòm thư...');
+    try {
+      await api.delete('/ranking/notifications');
+      setNotifications([]);
+      toast.success('Hòm thư đã được dọn sạch!', { id: loadingToast });
+    } catch (error) {
+      toast.error('Lỗi khi dọn dẹp hòm thư', { id: loadingToast });
     }
   };
 
@@ -408,7 +422,14 @@ const MemberDashboard: React.FC = () => {
 
               {activeTab === 'notifications' && (
                 <div className="space-y-6 max-w-3xl mx-auto w-full text-left">
-                  <h2 className="text-3xl font-black tracking-tighter uppercase italic">Thông báo hệ thống</h2>
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-3xl font-black tracking-tighter uppercase italic">Thông báo hệ thống</h2>
+                    {notifications.length > 0 && (
+                      <button onClick={handleClearNotifications} className="flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 hover:scale-105 transition-all">
+                        <Trash2 size={14} /> Dọn dẹp hòm thư
+                      </button>
+                    )}
+                  </div>
                   {notifications.map((n) => (
                     <div key={n.id} className={`p-6 rounded-[2rem] border transition-all ${!n.isRead ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-xl ring-1 ring-indigo-500/20' : 'bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800'}`}>
                       <h4 className="font-black text-lg mb-2">{n.title}</h4>

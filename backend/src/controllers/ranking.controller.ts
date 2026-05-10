@@ -47,6 +47,20 @@ export const markNotificationsRead = async (req: any, res: Response) => {
   }
 };
 
+export const clearNotifications = async (req: any, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    await (prisma as any).notification.deleteMany({
+      where: { userId },
+    });
+    res.json({ message: "Đã dọn dẹp hòm thư thành công" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi dọn dẹp thông báo" });
+  }
+};
+
 export const replyToNotification = async (req: any, res: Response) => {
   const { id } = req.params;
   const { message } = req.body;

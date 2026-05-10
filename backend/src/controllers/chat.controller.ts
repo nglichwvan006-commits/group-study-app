@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 
 export const getChatHistory = async (req: Request, res: Response) => {
+  const { roomId = "general" } = req.query;
+  
   try {
     const messages = await prisma.chatMessage.findMany({
+      where: { roomId: String(roomId) },
       orderBy: { createdAt: "asc" },
       include: { user: { select: { name: true, role: true } } },
       take: 100, // Limit to last 100 messages

@@ -32,7 +32,14 @@ export const setupSocket = (server: HttpServer) => {
     const user = (socket as any).user;
     console.log(`User connected: ${user.name} (${user.id})`);
 
+    socket.on("join_room", (roomId) => {
+      socket.join(roomId);
+      console.log(`User ${user.name} joined room: ${roomId}`);
+    });
+
     socket.on("send_message", async (data) => {
+      const { content, roomId = "general" } = data;
+      
       // Check if user is muted
       const currentUser = await prisma.user.findUnique({ where: { id: user.id } });
       if (currentUser?.isMuted) {
@@ -42,7 +49,8 @@ export const setupSocket = (server: HttpServer) => {
       try {
         const message = await prisma.chatMessage.create({
           data: {
-            content: data.content,
+            content,
+            roomId,
             userId: user.id,
           },
           include: {
@@ -50,14 +58,15 @@ export const setupSocket = (server: HttpServer) => {
           },
         });
 
-        io.emit("receive_message", message);
+        io.to(roomId).emit("receive_message", message);
       } catch (error) {
         console.error("Error saving message:", error);
       }
     });
 
     socket.on("delete_message", (data) => {
-      io.emit("message_deleted", data.id);
+      const { id, roomId = "general" } = data;
+      io.to(roomId).emit("message_deleted", id);
     });
 
     socket.on("disconnect", () => {

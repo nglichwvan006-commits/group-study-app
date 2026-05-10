@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -9,6 +10,7 @@ interface User {
   totalPoints?: number;
   level?: number;
   badge?: string;
+  bannedUntil?: string | null;
 }
 
 interface AuthContextType {
@@ -45,13 +47,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('accessToken');
     if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
       setAccessToken(storedToken);
+      
+      // Check for ban on initial load
+      if (parsedUser.bannedUntil && new Date(parsedUser.bannedUntil) > new Date()) {
+        logout();
+      }
     }
     setIsLoading(false);
   }, []);
 
   const login = (token: string, refresh: string, userData: User) => {
+    if (userData.bannedUntil && new Date(userData.bannedUntil) > new Date()) {
+      toast.error(`Tài khoản này bị khóa đến ${new Date(userData.bannedUntil).toLocaleDateString()}`);
+      return;
+    }
     setAccessToken(token);
     setUser(userData);
     localStorage.setItem('accessToken', token);
@@ -71,9 +83,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await api.get('/auth/me');
       const updatedUser = response.data;
+      
+      if (updatedUser.bannedUntil && new Date(updatedUser.bannedUntil) > new Date()) {
+        logout();
+        toast.error(`Bạn bị cấm truy cập đến ${new Date(updatedUser.bannedUntil).toLocaleDateString()}`);
+        return;
+      }
+
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        logout();
+        const msg = error.response.data.message || "Tài khoản bị khóa";
+        const date = error.response.data.bannedUntil;
+        toast.error(`${msg}${date ? ' đến ' + new Date(date).toLocaleDateString() : ''}`, { duration: 10000 });
+      }
       console.error('Error refreshing user profile', error);
     }
   };

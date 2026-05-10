@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import bcrypt from "bcrypt";
 import prisma from "../utils/prisma";
 import { Role } from "../types/auth";
 
@@ -7,7 +6,7 @@ export const getUsers = async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, email: true, name: true, role: true, isMuted: true, bannedUntil: true, createdAt: true, totalPoints: true, level: true, badge: true },
+      select: { id: true, email: true, name: true, role: true, isMuted: true, bannedUntil: true, createdAt: true, totalPoints: true, level: true, badge: true, avatarUrl: true },
     });
     res.json(users);
   } catch (error) {
@@ -151,6 +150,7 @@ export const sendNotification = async (req: any, res: Response) => {
       },
     });
 
+    // Also create a "Warning" entry if system uses it for notifications
     await (prisma as any).warning.create({
       data: {
         userId,
@@ -171,6 +171,7 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
 
     await prisma.$transaction(async (tx) => {
       for (const user of users) {
+        // Find best score for each assignment for this user
         const submissions = await (tx as any).submission.findMany({
           where: { 
             userId: user.id,
@@ -179,6 +180,7 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
           select: { assignmentId: true, score: true }
         });
 
+        // Group by assignment and take the max score (in case of multiple graded submissions)
         const bestScores: { [key: string]: number } = {};
         submissions.forEach((s: any) => {
           if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
@@ -235,6 +237,7 @@ export const overrideScore = async (req: any, res: any) => {
         },
       });
 
+      // Recalculate full XP for this user automatically from all best graded submissions
       const allUserSubmissions = await (tx as any).submission.findMany({
         where: { userId: submission.userId, status: "GRADED" },
         select: { assignmentId: true, score: true }

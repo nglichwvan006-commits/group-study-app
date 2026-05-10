@@ -11,7 +11,7 @@ export const searchUsers = async (req: any, res: Response) => {
           { email: { contains: String(q), mode: "insensitive" } },
         ],
       },
-      select: { id: true, name: true, badge: true, level: true, totalPoints: true },
+      select: { id: true, name: true, badge: true, level: true, totalPoints: true, avatarUrl: true },
       take: 20,
     });
     res.json(users);
@@ -31,6 +31,7 @@ export const getProfile = async (req: any, res: Response) => {
         name: true,
         email: true,
         role: true,
+        avatarUrl: true,
         totalPoints: true,
         level: true,
         badge: true,
@@ -49,9 +50,9 @@ export const getProfile = async (req: any, res: Response) => {
         posts: {
           orderBy: { createdAt: "desc" },
           include: {
-            user: { select: { id: true, name: true, badge: true, level: true } },
+            user: { select: { id: true, name: true, badge: true, level: true, avatarUrl: true } },
             comments: {
-              include: { user: { select: { id: true, name: true } } },
+              include: { user: { select: { id: true, name: true, avatarUrl: true } } },
               orderBy: { createdAt: "asc" }
             },
             likes: { select: { userId: true } }
@@ -78,13 +79,14 @@ export const getProfile = async (req: any, res: Response) => {
 
 export const updateMyProfile = async (req: any, res: Response) => {
   const userId = req.user.id;
-  const { age, school, className, studentId, gender, bio, name } = req.body;
+  const { age, school, className, studentId, gender, bio, name, avatarUrl } = req.body;
 
   try {
     const updated = await (prisma.user as any).update({
       where: { id: userId },
       data: {
         name,
+        avatarUrl,
         age: age ? parseInt(age) : null,
         school,
         className,

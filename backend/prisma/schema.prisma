@@ -13,6 +13,7 @@ model User {
   email         String         @unique
   password      String? 
   name          String
+  avatarUrl     String?
   role          String         @default("MEMBER")
   isMuted       Boolean        @default(false)
   bannedUntil   DateTime?

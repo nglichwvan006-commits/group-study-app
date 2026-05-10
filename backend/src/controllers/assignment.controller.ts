@@ -3,9 +3,11 @@ import prisma from "../utils/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { gradeSubmissionAsync, classifyDifficultyAsync, bulkGenerateAssignmentsAsync } from "../services/grading.service";
 
-export const getAssignments = async (req: Request, res: Response) => {
+export const getAssignments = async (req: any, res: Response) => {
+  const userRole = req.user?.role;
   try {
     const assignments = await prisma.assignment.findMany({
+      where: userRole === "ADMIN" ? {} : { isHidden: false },
       orderBy: { createdAt: "desc" },
       include: { creator: { select: { name: true } } },
     });
@@ -35,6 +37,7 @@ export const createAssignment = async (req: any, res: Response) => {
         maxScore: maxScore ? parseInt(maxScore) : 100,
         difficulty,
         creatorId,
+        isHidden: false,
       },
     });
     res.status(201).json(assignment);
@@ -84,6 +87,7 @@ export const bulkCreateAssignmentsAI = async (req: any, res: Response) => {
             deadline: deadline,
             creatorId: creatorId,
             language: "auto",
+            isHidden: false,
             rubric: "Tự động chấm điểm bởi AI dựa trên độ chính xác và chất lượng mã nguồn."
           }
         });
@@ -98,6 +102,71 @@ export const bulkCreateAssignmentsAI = async (req: any, res: Response) => {
   } catch (error) {
     console.error("[Bulk AI Controller] Error:", error);
     res.status(500).json({ message: "Error processing assignments with AI" });
+  }
+};
+
+export const bulkDeleteAssignments = async (req: any, res: Response) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids)) return res.status(400).json({ message: "IDs array is required" });
+
+  try {
+    const affectedUserIds = await (prisma as any).submission.findMany({
+      where: { assignmentId: { in: ids }, status: "GRADED" },
+      select: { userId: true }
+    }).then((subs: any[]) => [...new Set(subs.map(s => s.userId))]);
+
+    await prisma.$transaction(async (tx) => {
+      await (tx as any).submission.deleteMany({ where: { assignmentId: { in: ids } } });
+      await tx.assignment.deleteMany({ where: { id: { in: ids } } });
+
+      for (const userId of affectedUserIds) {
+        const userSubmissions = await (tx as any).submission.findMany({
+          where: { userId, status: "GRADED" },
+          select: { assignmentId: true, score: true }
+        });
+
+        const bestScores: { [key: string]: number } = {};
+        userSubmissions.forEach((s: any) => {
+          if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
+            bestScores[s.assignmentId] = s.score || 0;
+          }
+        });
+
+        const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
+        const newLevel = Math.floor(newPoints / 2000) + 1;
+        
+        let newBadge = "Bronze";
+        if (newPoints >= 10000) newBadge = "Master";
+        else if (newPoints >= 5000) newBadge = "Diamond";
+        else if (newPoints >= 3000) newBadge = "Platinum";
+        else if (newPoints >= 1500) newBadge = "Gold";
+        else if (newPoints >= 500) newBadge = "Silver";
+
+        await (tx as any).user.update({
+          where: { id: userId },
+          data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
+        });
+      }
+    });
+
+    res.json({ message: `Successfully deleted ${ids.length} assignments and updated users' XP.` });
+  } catch (error) {
+    res.status(500).json({ message: "Error during bulk delete" });
+  }
+};
+
+export const bulkToggleHideAssignments = async (req: any, res: Response) => {
+  const { ids, isHidden } = req.body;
+  if (!ids || !Array.isArray(ids)) return res.status(400).json({ message: "IDs array is required" });
+
+  try {
+    await prisma.assignment.updateMany({
+      where: { id: { in: ids } },
+      data: { isHidden: isHidden }
+    });
+    res.json({ message: `Successfully ${isHidden ? 'hidden' : 'shown'} ${ids.length} assignments.` });
+  } catch (error) {
+    res.status(500).json({ message: "Error during bulk hide/show" });
   }
 };
 

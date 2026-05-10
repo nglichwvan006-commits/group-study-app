@@ -178,12 +178,20 @@ const Profile: React.FC = () => {
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 text-left">
                  <h3 className="text-lg font-black mb-6 uppercase">Bài tập hoàn thành</h3>
                  <div className="space-y-3">
-                    {profile.submissions?.map((s: any) => (
-                       <div key={s.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center">
-                          <p className="font-bold text-xs truncate w-32">{s.assignment?.title}</p>
-                          <p className="font-black text-indigo-600 text-xs">{s.score} PTS</p>
-                       </div>
-                    ))}
+                    {profile.submissions?.slice().sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((s: any, index: number, array: any[]) => {
+                       const previousAttempts = array.slice(0, index).filter(prev => prev.assignmentId === s.assignmentId).length;
+                       return (
+                          <div key={s.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center group">
+                             <div className="flex flex-col">
+                                <p className="font-bold text-xs truncate w-32">{s.assignment?.title}</p>
+                                {previousAttempts > 0 && (
+                                   <span className="text-[10px] font-black text-amber-500 uppercase tracking-tight">Làm lần {previousAttempts + 1}</span>
+                                )}
+                             </div>
+                             <p className="font-black text-indigo-600 text-xs">{s.score} PTS</p>
+                          </div>
+                       );
+                    })}
                     {(!profile.submissions || profile.submissions.length === 0) && <p className="text-xs text-slate-400 italic">Chưa có bài tập nào.</p>}
                  </div>
               </div>

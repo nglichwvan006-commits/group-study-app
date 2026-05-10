@@ -34,12 +34,55 @@ const AdminDashboard: React.FC = () => {
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', maxScore: 100 });
   const [isAISmartMode, setIsAISmartMode] = useState(false);
   const [rawAssignmentText, setRawAssignmentText] = useState('');
+  const [selectedAssignments, setSelectedAssignments] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
     fetchLeaderboard();
     fetchAssignments();
   }, []);
+
+  const handleSelectAllAssignments = () => {
+    if (selectedAssignments.length === assignments.length) {
+      setSelectedAssignments([]);
+    } else {
+      setSelectedAssignments(assignments.map(a => a.id));
+    }
+  };
+
+  const handleToggleAssignmentSelection = (id: string) => {
+    setSelectedAssignments(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedAssignments.length === 0) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedAssignments.length} bài tập đã chọn?`)) return;
+
+    const loadingToast = toast.loading(`Đang xóa ${selectedAssignments.length} bài tập...`);
+    try {
+      await api.post('/assignments/bulk-delete', { ids: selectedAssignments });
+      toast.success('Đã xóa thành công!', { id: loadingToast });
+      setSelectedAssignments([]);
+      fetchAssignments();
+    } catch (error) {
+      toast.error('Lỗi khi xóa hàng loạt', { id: loadingToast });
+    }
+  };
+
+  const handleBulkHide = async (isHidden: boolean) => {
+    if (selectedAssignments.length === 0) return;
+    const loadingToast = toast.loading(`Đang ${isHidden ? 'ẩn' : 'hiện'} ${selectedAssignments.length} bài tập...`);
+    try {
+      await api.post('/assignments/bulk-hide', { ids: selectedAssignments, isHidden });
+      toast.success('Đã cập nhật trạng thái!', { id: loadingToast });
+      setSelectedAssignments([]);
+      fetchAssignments();
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật trạng thái', { id: loadingToast });
+    }
+  };
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -372,10 +415,20 @@ const AdminDashboard: React.FC = () => {
 
               {activeTab === 'assignments' && (
                 <div className="space-y-6 text-left">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">Bài tập Lập trình</h2>
-                    <button onClick={() => setShowAddAssignment(!showAddAssignment)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2 shadow-lg font-bold text-sm hover:bg-indigo-700 transition-all"><Plus size={20} /> TẠO BÀI TẬP</button>
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                      {selectedAssignments.length > 0 && (
+                        <>
+                          <button onClick={handleBulkDelete} className="flex-1 sm:flex-none bg-rose-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold text-xs"><Trash2 size={16} /> XÓA ({selectedAssignments.length})</button>
+                          <button onClick={() => handleBulkHide(true)} className="flex-1 sm:flex-none bg-slate-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold text-xs"><MicOff size={16} /> ẨN</button>
+                          <button onClick={() => handleBulkHide(false)} className="flex-1 sm:flex-none bg-indigo-500 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold text-xs"><Mic size={16} /> HIỆN</button>
+                        </>
+                      )}
+                      <button onClick={() => setShowAddAssignment(!showAddAssignment)} className="flex-1 sm:flex-none bg-indigo-600 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg font-bold text-xs hover:bg-indigo-700 transition-all"><Plus size={20} /> TẠO BÀI TẬP</button>
+                    </div>
                   </div>
+
                   <AnimatePresence>
                     {showAddAssignment && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 mb-6 overflow-hidden">
@@ -434,24 +487,72 @@ const AdminDashboard: React.FC = () => {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {assignments.map((a) => (
-                      <motion.div key={a.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 relative group overflow-hidden">
-                        <div className="flex justify-between items-start mb-4">
-                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${a.difficulty === 'Master' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{a.difficulty || 'Chưa phân loại'}</span>
-                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => handleEditAssignment(a)} className="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:text-indigo-600"><Plus size={16} className="rotate-45"/></button>
-                              <button onClick={() => handleDeleteAssignment(a.id)} className="p-1.5 bg-rose-50 text-slate-400 rounded-lg hover:text-rose-600"><Trash2 size={16}/></button>
-                           </div>
-                        </div>
-                        <h3 className="font-bold text-lg mb-2 line-clamp-1">{a.title}</h3>
-                        <p className="text-xs text-slate-500 line-clamp-3 mb-6 leading-relaxed">{a.description}</p>
-                        <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
-                           <div className="flex items-center gap-1.5 text-slate-400"><Clock size={12}/> <span className="text-[10px] font-black">{new Date(a.deadline).toLocaleDateString()}</span></div>
-                           <span className="text-sm font-black text-indigo-600">{a.maxScore} PTS</span>
-                        </div>
-                      </motion.div>
-                    ))}
+
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="px-6 py-4 w-10">
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                                checked={assignments.length > 0 && selectedAssignments.length === assignments.length}
+                                onChange={handleSelectAllAssignments}
+                              />
+                            </th>
+                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Tiêu đề / Độ khó</th>
+                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Điểm tối đa</th>
+                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Hạn nộp</th>
+                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Trạng thái</th>
+                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {assignments.map((a) => (
+                            <tr key={a.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all ${selectedAssignments.includes(a.id) ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}>
+                              <td className="px-6 py-4">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                                  checked={selectedAssignments.includes(a.id)}
+                                  onChange={() => handleToggleAssignmentSelection(a.id)}
+                                />
+                              </td>
+                              <td className="px-6 py-4">
+                                <p className="font-bold text-sm">{a.title}</p>
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                  a.difficulty === 'Master' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                  a.difficulty === 'Khó' ? 'bg-red-50 text-red-600 border-red-100' :
+                                  a.difficulty === 'Khá' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                  'bg-slate-50 text-slate-500 border-slate-100'
+                                }`}>{a.difficulty || 'TB'}</span>
+                              </td>
+                              <td className="px-6 py-4 font-black text-indigo-600 text-sm">{a.maxScore} PTS</td>
+                              <td className="px-6 py-4 text-xs text-slate-500">{new Date(a.deadline).toLocaleDateString()}</td>
+                              <td className="px-6 py-4">
+                                {a.isHidden ? (
+                                  <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full uppercase">ĐANG ẨN</span>
+                                ) : (
+                                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase border border-emerald-100">HIỂN THỊ</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                 <div className="flex items-center justify-end gap-1.5">
+                                    <button onClick={() => handleEditAssignment(a)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"><Plus size={14} className="rotate-45"/></button>
+                                    <button onClick={() => handleDeleteAssignment(a.id)} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"><Trash2 size={14}/></button>
+                                 </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {assignments.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-20 text-center text-slate-400 italic">Không có bài tập nào.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}

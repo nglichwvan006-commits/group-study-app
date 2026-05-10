@@ -9,10 +9,13 @@ export const getFeed = async (req: any, res: Response) => {
       where: q ? {
         content: { contains: String(q), mode: "insensitive" }
       } : {},
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { isPinned: "desc" },
+        { createdAt: "desc" }
+      ],
       include: {
         user: {
-          select: { id: true, name: true, badge: true, level: true }
+          select: { id: true, name: true, badge: true, level: true, role: true }
         },
         comments: {
           include: {
@@ -44,6 +47,7 @@ export const getFeed = async (req: any, res: Response) => {
 export const createPost = async (req: any, res: Response) => {
   const { content, imageUrl } = req.body;
   const userId = req.user.id;
+  const userRole = req.user.role;
 
   if (!content) return res.status(400).json({ message: "Nội dung không được để trống" });
 
@@ -52,11 +56,12 @@ export const createPost = async (req: any, res: Response) => {
       data: {
         content,
         imageUrl,
-        userId
+        userId,
+        isPinned: userRole === "ADMIN" // Auto-pin if admin
       },
       include: {
         user: {
-          select: { id: true, name: true, badge: true, level: true }
+          select: { id: true, name: true, badge: true, level: true, role: true }
         },
         comments: true,
         likes: true

@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider  = "sqlite"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -51,6 +50,7 @@ model Post {
   id        String    @id @default(uuid())
   content   String
   imageUrl  String?
+  isPinned  Boolean   @default(false)
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  Comment[]
@@ -109,6 +109,7 @@ model Assignment {
   maxScore    Int          @default(100)
   difficulty  String?      @default("Trung bình")
   rubric      String       @default("General correctness and code quality.")
+  isHidden    Boolean      @default(false)
 
   creatorId   String
   creator     User         @relation("CreatedAssignments", fields: [creatorId], references: [id])

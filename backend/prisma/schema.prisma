@@ -104,7 +104,6 @@ model ChatRoom {
   code      String        @unique
   creatorId String
   creator   User          @relation("CreatedRooms", fields: [creatorId], references: [id])
-  messages  ChatMessage[]
   createdAt DateTime      @default(now())
 }
 

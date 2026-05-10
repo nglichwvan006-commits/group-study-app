@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
 
 const MemberDashboard: React.FC = () => {
-  const { logout, user, darkMode, toggleDarkMode } = useAuth();
+  const { logout, user, darkMode, toggleDarkMode, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'assignments' | 'chat' | 'resources' | 'leaderboard' | 'notifications'>('assignments');
   const [assignments, setAssignments] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
@@ -69,6 +69,7 @@ const MemberDashboard: React.FC = () => {
     fetchMySubmissions();
     fetchLeaderboard();
     fetchNotifications();
+    refreshUser();
     toast.success('Đã làm mới dữ liệu!');
   };
 
@@ -156,6 +157,7 @@ Code: ${content}`;
         fetchMySubmissions();
         fetchLeaderboard();
         fetchNotifications();
+        refreshUser();
       }, 3000);
       
     } catch (error: any) {

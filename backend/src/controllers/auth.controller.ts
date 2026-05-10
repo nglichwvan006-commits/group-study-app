@@ -33,7 +33,19 @@ export const loginMember = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      accessToken, 
+      refreshToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        totalPoints: user.totalPoints,
+        level: user.level,
+        badge: user.badge
+      } 
+    });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ message: "Lỗi hệ thống khi đăng nhập", error: String(error) });

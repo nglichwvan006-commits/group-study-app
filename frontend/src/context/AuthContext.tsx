@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ interface AuthContextType {
   accessToken: string | null;
   login: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
   darkMode: boolean;
   toggleDarkMode: () => void;
@@ -65,10 +67,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      const updatedUser = response.data;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error('Error refreshing user profile', error);
+    }
+  };
+
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, login, logout, isLoading, darkMode, toggleDarkMode }}>
+    <AuthContext.Provider value={{ user, accessToken, login, logout, refreshUser, isLoading, darkMode, toggleDarkMode }}>
       {children}
     </AuthContext.Provider>
   );

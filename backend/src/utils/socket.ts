@@ -48,10 +48,10 @@ export const setupSocket = (server: HttpServer) => {
       }
 
       try {
-        const message = await prisma.chatMessage.create({
+        const message = await (prisma as any).chatMessage.create({
           data: {
             content,
-            roomId,
+            roomId: roomId || null,
             userId: user.id,
           },
           include: {
@@ -59,7 +59,7 @@ export const setupSocket = (server: HttpServer) => {
           },
         });
 
-        io.to(roomId).emit("receive_message", message);
+        io.to(roomId || "global").emit("receive_message", message);
       } catch (error) {
         console.error("Error saving message:", error);
       }

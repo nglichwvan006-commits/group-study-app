@@ -9,8 +9,10 @@ export const getLeaderboard = async (req: Request, res: Response) => {
       select: { id: true, name: true, totalPoints: true, level: true, badge: true },
       take: 100,
     });
+    console.log(`[Leaderboard] Returning ${users.length} users`);
     res.json(users);
   } catch (error) {
+    console.error("[Leaderboard Error]", error);
     res.status(500).json({ message: "Error fetching leaderboard" });
   }
 };

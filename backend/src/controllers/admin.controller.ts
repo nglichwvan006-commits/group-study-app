@@ -113,9 +113,7 @@ export const sendNotification = async (req: any, res: Response) => {
 
 export const syncAllUsersXP = async (req: Request, res: Response) => {
   try {
-    const users = await (prisma.user as any).findMany({
-      where: { role: Role.MEMBER }
-    });
+    const users = await (prisma.user as any).findMany();
 
     await prisma.$transaction(async (tx) => {
       for (const user of users) {
@@ -199,14 +197,14 @@ export const overrideScore = async (req: any, res: any) => {
       });
 
       const newPoints = Object.values(bestScores).reduce((a: number, b: number) => a + b, 0);
-      const newLevel = Math.floor(newPoints / 100) + 1;
+      const newLevel = Math.floor(newPoints / 2000) + 1;
       
       let newBadge = "Bronze";
-      if (newPoints >= 1000) newBadge = "Master";
-      else if (newPoints >= 500) newBadge = "Diamond";
-      else if (newPoints >= 300) newBadge = "Platinum";
-      else if (newPoints >= 150) newBadge = "Gold";
-      else if (newPoints >= 50) newBadge = "Silver";
+      if (newPoints >= 10000) newBadge = "Master";
+      else if (newPoints >= 5000) newBadge = "Diamond";
+      else if (newPoints >= 3000) newBadge = "Platinum";
+      else if (newPoints >= 1500) newBadge = "Gold";
+      else if (newPoints >= 500) newBadge = "Silver";
 
       await (tx as any).user.update({
         where: { id: submission.userId },

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getLeaderboard, getNotifications, markNotificationsRead } from "../controllers/ranking.controller";
+import { getLeaderboard, getNotifications, markNotificationsRead, replyToNotification } from "../controllers/ranking.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();

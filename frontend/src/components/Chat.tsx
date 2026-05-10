@@ -14,6 +14,7 @@ const Chat: React.FC = () => {
   const [activeRoom, setActiveRoom] = useState<any>(null);
   const [showCreateRoom, setShowAddRoom] = useState(false);
   const [newRoomData, setNewRoomData] = useState({ name: '', code: '' });
+  const [joinCode, setJoinCode] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +62,6 @@ const Chat: React.FC = () => {
     try {
       const res = await api.get('/chat/rooms');
       setRooms(res.data);
-      // Auto-select GENERAL room if exists
       if (!activeRoom) {
          const general = res.data.find((r: any) => r.code === 'GENERAL');
          if (general) setActiveRoom(general);
@@ -82,6 +82,28 @@ const Chat: React.FC = () => {
       toast.success('Đã tạo phòng thành công!');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi tạo phòng');
+    }
+  };
+
+  const handleJoinByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinCode.trim()) return;
+
+    const loadingToast = toast.loading('Đang kiểm tra mã phòng...');
+    try {
+      const res = await api.post('/chat/rooms/join', { code: joinCode.trim().toUpperCase() });
+      const joinedRoom = res.data;
+      
+      // Update room list if not already there
+      if (!rooms.find(r => r.id === joinedRoom.id)) {
+        setRooms([joinedRoom, ...rooms]);
+      }
+      
+      setActiveRoom(joinedRoom);
+      setJoinCode('');
+      toast.success(`Đã gia nhập phòng ${joinedRoom.name}`, { id: loadingToast });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể gia nhập phòng', { id: loadingToast });
     }
   };
 
@@ -130,6 +152,19 @@ const Chat: React.FC = () => {
             >
               <Plus size={18} />
             </button>
+         </div>
+
+         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+            <form onSubmit={handleJoinByCode} className="flex gap-2">
+               <input 
+                 type="text" 
+                 placeholder="Mã gia nhập..." 
+                 className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-[10px] font-bold uppercase"
+                 value={joinCode}
+                 onChange={(e) => setJoinCode(e.target.value)}
+               />
+               <button type="submit" className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-3 py-2 rounded-lg font-black text-[10px] hover:opacity-90">GIA NHẬP</button>
+            </form>
          </div>
 
          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">

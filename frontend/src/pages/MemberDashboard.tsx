@@ -14,6 +14,7 @@ const MemberDashboard: React.FC = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [submissionContent, setSubmissionContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -284,7 +285,7 @@ Code: ${content}`;
                       {assignments.map((a, index) => {
                         const mySub = mySubmissions.find(s => s.assignmentId === a.id);
                         return (
-                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} key={a.id} onClick={() => { setSelectedAssignment(a); setSubmissionContent(mySub?.content || ''); }} className={`p-6 rounded-3xl border transition-all cursor-pointer shadow-sm group ${selectedAssignment?.id === a.id ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-4 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-slate-700'}`}>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} key={a.id} onClick={() => { setSelectedAssignment(a); setSubmissionContent(mySub?.content || ''); setSelectedLanguage(a.language.toLowerCase()); }} className={`p-6 rounded-3xl border transition-all cursor-pointer shadow-sm group ${selectedAssignment?.id === a.id ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-4 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-slate-700'}`}>
                           <div className="flex justify-between items-center mb-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">{a.language}</span>
                             {mySub && <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${mySub.status === 'GRADED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{mySub.status}</span>}
@@ -332,32 +333,52 @@ Code: ${content}`;
                             })()}
 
                             <form onSubmit={handleSubmitAssignment} className="space-y-6">
-                              <div className="h-[450px] border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-2xl ring-8 ring-slate-100 dark:ring-slate-800/50">
-                                <Editor 
-                                  height="100%" 
-                                  language={selectedAssignment.language.toLowerCase()} 
-                                  theme={darkMode ? "vs-dark" : "light"} 
-                                  value={submissionContent} 
-                                  onChange={(val) => setSubmissionContent(val || '')} 
-                                  options={{ 
-                                    minimap: { enabled: false }, 
-                                    fontSize: 14, 
-                                    padding: { top: 20 }, 
-                                    scrollBeyondLastLine: false, 
-                                    automaticLayout: true, 
-                                    fontFamily: 'Fira Code, monospace',
-                                    suggestOnTriggerCharacters: true,
-                                    quickSuggestions: { other: true, comments: true, strings: true },
-                                    acceptSuggestionOnEnter: "on",
-                                    tabCompletion: "on",
-                                    wordWrap: "on",
-                                    folding: true,
-                                    lineNumbers: "on",
-                                    renderLineHighlight: "all",
-                                    formatOnPaste: true,
-                                    formatOnType: true
-                                  }} 
-                                />
+                              <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between px-2">
+                                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Ngôn ngữ lập trình</label>
+                                  <select 
+                                    value={selectedLanguage} 
+                                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+                                  >
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="typescript">TypeScript</option>
+                                    <option value="python">Python</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="java">Java</option>
+                                    <option value="html">HTML</option>
+                                    <option value="css">CSS</option>
+                                    <option value="sql">SQL</option>
+                                    <option value="php">PHP</option>
+                                  </select>
+                                </div>
+                                <div className="h-[450px] border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-2xl ring-8 ring-slate-100 dark:ring-slate-800/50">
+                                  <Editor 
+                                    height="100%" 
+                                    language={selectedLanguage} 
+                                    theme={darkMode ? "vs-dark" : "light"} 
+                                    value={submissionContent} 
+                                    onChange={(val) => setSubmissionContent(val || '')} 
+                                    options={{ 
+                                      minimap: { enabled: false }, 
+                                      fontSize: 14, 
+                                      padding: { top: 20 }, 
+                                      scrollBeyondLastLine: false, 
+                                      automaticLayout: true, 
+                                      fontFamily: 'Fira Code, monospace',
+                                      suggestOnTriggerCharacters: true,
+                                      quickSuggestions: { other: true, comments: true, strings: true },
+                                      acceptSuggestionOnEnter: "on",
+                                      tabCompletion: "on",
+                                      wordWrap: "on",
+                                      folding: true,
+                                      lineNumbers: "on",
+                                      renderLineHighlight: "all",
+                                      formatOnPaste: true,
+                                      formatOnType: true
+                                    }} 
+                                  />
+                                </div>
                               </div>
                               <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-5 rounded-3xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-500/30 transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
                                 {isSubmitting ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Send size={22} /> Nộp bài & Cập nhật điểm AI</>}

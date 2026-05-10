@@ -18,7 +18,7 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
     try {
       const res = await api.post(`/posts/${post.id}/toggle-like`);
       setIsLiked(res.data.liked);
-      setLikeCount(prev => res.data.liked ? prev + 1 : prev - 1);
+      setLikeCount((prev: number) => res.data.liked ? prev + 1 : prev - 1);
     } catch (error) {
       toast.error('Lỗi khi thả tim');
     }

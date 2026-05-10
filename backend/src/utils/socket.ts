@@ -38,7 +38,8 @@ export const setupSocket = (server: HttpServer) => {
     });
 
     socket.on("send_message", async (data) => {
-      const { content, roomId = "general" } = data;
+      const { content, roomId } = data;
+      if (!roomId) return;
       
       // Check if user is muted
       const currentUser = await prisma.user.findUnique({ where: { id: user.id } });
@@ -65,7 +66,8 @@ export const setupSocket = (server: HttpServer) => {
     });
 
     socket.on("delete_message", (data) => {
-      const { id, roomId = "general" } = data;
+      const { id, roomId } = data;
+      if (!roomId) return;
       io.to(roomId).emit("message_deleted", id);
     });
 

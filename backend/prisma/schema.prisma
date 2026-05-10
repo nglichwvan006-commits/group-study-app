@@ -30,6 +30,7 @@ model User {
   refreshTokens RefreshToken[]
   resources     Resource[]
   notifications Notification[]
+  createdRooms  ChatRoom[]     @relation("CreatedRooms")
 }
 
 model Resource {
@@ -97,10 +98,21 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
+model ChatRoom {
+  id        String        @id @default(uuid())
+  name      String
+  code      String        @unique
+  creatorId String
+  creator   User          @relation("CreatedRooms", fields: [creatorId], references: [id])
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+}
+
 model ChatMessage {
   id        String   @id @default(uuid())
   content   String
-  roomId    String   @default("general")
+  roomId    String
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())

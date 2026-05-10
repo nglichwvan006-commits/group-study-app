@@ -2,32 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Send, Shield, Trash2, MessageCircle } from 'lucide-react';
+import { Send, Shield, Trash2, MessageCircle, Plus, Hash, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const Chat: React.FC = () => {
   const { user, accessToken } = useAuth();
+  const [rooms, setRooms] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [joinCode, setJoinCode] = useState('');
+  const [activeRoom, setActiveRoom] = useState<any>(null);
+  const [showCreateRoom, setShowAddRoom] = useState(false);
+  const [newRoomData, setNewRoomData] = useState({ name: '', code: '' });
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!roomId) return;
-
-    // Fetch history for specific room
-    api.get(`/chat/history?roomId=${roomId}`).then((res) => setMessages(res.data)).catch(() => toast.error('Lỗi tải lịch sử chat'));
-
-    // Setup socket
+    fetchRooms();
+    
     const newSocket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000', {
       auth: { token: accessToken },
-    });
-
-    newSocket.on('connect', () => {
-      newSocket.emit('join_room', roomId);
     });
 
     newSocket.on('receive_message', (message) => {
@@ -47,187 +41,231 @@ const Chat: React.FC = () => {
     return () => {
       newSocket.close();
     };
-  }, [accessToken, roomId]);
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!activeRoom) return;
+    
+    // Fetch history
+    api.get(`/chat/history?roomId=${activeRoom.id}`).then((res) => setMessages(res.data)).catch(() => toast.error('Lỗi tải lịch sử chat'));
+    
+    // Join room
+    socket?.emit('join_room', activeRoom.id);
+  }, [activeRoom, socket]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const fetchRooms = async () => {
+    try {
+      const res = await api.get('/chat/rooms');
+      setRooms(res.data);
+      // Auto-select GENERAL room if exists
+      if (!activeRoom) {
+         const general = res.data.find((r: any) => r.code === 'GENERAL');
+         if (general) setActiveRoom(general);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách phòng');
+    }
+  };
+
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/chat/rooms', newRoomData);
+      setRooms([res.data, ...rooms]);
+      setActiveRoom(res.data);
+      setShowAddRoom(false);
+      setNewRoomData({ name: '', code: '' });
+      toast.success('Đã tạo phòng thành công!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi tạo phòng');
+    }
+  };
+
+  const handleDeleteRoom = async (id: string) => {
+    if (!window.confirm('Xóa phòng sẽ mất toàn bộ tin nhắn. Bạn chắc chứ?')) return;
+    try {
+      await api.delete(`/chat/rooms/${id}`);
+      setRooms(rooms.filter(r => r.id !== id));
+      if (activeRoom?.id === id) setActiveRoom(null);
+      toast.success('Đã xóa phòng');
+    } catch (error) {
+      toast.error('Lỗi khi xóa phòng');
+    }
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !socket || !roomId) return;
+    if (!newMessage.trim() || !socket || !activeRoom) return;
 
-    socket.emit('send_message', { content: newMessage, roomId });
+    socket.emit('send_message', { content: newMessage, roomId: activeRoom.id });
     setNewMessage('');
-  };
-
-  const handleJoinRoom = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!joinCode.trim()) return;
-    setRoomId(joinCode.trim().toUpperCase());
-  };
-
-  const generateRandomRoom = () => {
-    const code = 'ROOM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomId(code);
   };
 
   const handleDeleteMessage = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) return;
     try {
       await api.delete(`/chat/${id}`);
-      socket?.emit('delete_message', { id, roomId });
+      socket?.emit('delete_message', { id, roomId: activeRoom.id });
       toast.success('Đã thu hồi tin nhắn');
     } catch (error) {
       toast.error('Lỗi khi thu hồi tin nhắn');
     }
   };
 
-  if (!roomId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50/50 dark:bg-slate-900/50">
-        <div className="max-w-md w-full space-y-8 bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl border border-slate-100 dark:border-slate-800">
-           <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <MessageCircle size={40} className="text-indigo-600 dark:text-indigo-400" />
-           </div>
-           <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Phòng Chat Nhóm</h2>
-           <p className="text-slate-500 font-medium leading-relaxed">Tham gia phòng chat chung hoặc tạo phòng riêng để thảo luận học tập cùng bạn bè.</p>
-           
-           <div className="space-y-4 pt-4">
-              <button 
-                onClick={() => setRoomId('GENERAL')}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all transform hover:scale-[1.02] active:scale-95"
-              >
-                VÀO PHÒNG CHUNG
-              </button>
-              
-              <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
-                <span className="flex-shrink mx-4 text-xs font-black text-slate-300 uppercase tracking-widest">Hoặc</span>
-                <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
-              </div>
-
-              <form onSubmit={handleJoinRoom} className="flex gap-2">
-                 <input 
-                   type="text" 
-                   placeholder="Nhập mã phòng..." 
-                   className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold uppercase"
-                   value={joinCode}
-                   onChange={(e) => setJoinCode(e.target.value)}
-                 />
-                 <button type="submit" className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-6 py-3 rounded-xl font-black text-sm hover:opacity-90 transition-all">THAM GIA</button>
-              </form>
-              
-              <button 
-                onClick={generateRandomRoom}
-                className="w-full py-3 text-indigo-600 dark:text-indigo-400 text-sm font-black hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all"
-              >
-                TẠO MÃ PHÒNG NGẪU NHIÊN
-              </button>
-           </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white rounded-3xl overflow-hidden relative">
+    <div className="flex h-full bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white rounded-3xl overflow-hidden relative">
       
-      {/* Chat Header */}
-      <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/50 flex justify-between items-center z-20">
-         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center">
-               <MessageCircle size={20} className="text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-               <h4 className="font-black text-sm uppercase tracking-tighter">Phòng: {roomId}</h4>
-               <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Đang trực tuyến</p>
-            </div>
+      {/* Sidebar Rooms */}
+      <div className="w-64 sm:w-72 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl">
+         <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+            <h3 className="font-black text-lg tracking-tighter">PHÒNG CHAT</h3>
+            <button 
+              onClick={() => setShowAddRoom(true)}
+              className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all"
+              title="Tạo phòng mới"
+            >
+              <Plus size={18} />
+            </button>
          </div>
-         <button 
-           onClick={() => setRoomId(null)}
-           className="px-4 py-2 text-xs font-black text-slate-400 hover:text-rose-500 transition-colors bg-slate-50 dark:bg-slate-800 rounded-lg"
-         >
-           THOÁT PHÒNG
-         </button>
+
+         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+            {rooms.map((r) => (
+               <div 
+                 key={r.id}
+                 className={`group flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all border ${activeRoom?.id === r.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                 onClick={() => setActiveRoom(r)}
+               >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                     <Hash size={18} className={activeRoom?.id === r.id ? 'text-white' : 'text-slate-400'} />
+                     <div className="overflow-hidden">
+                        <p className="font-bold text-sm truncate">{r.name}</p>
+                        <p className={`text-[10px] uppercase font-black tracking-widest ${activeRoom?.id === r.id ? 'text-indigo-200' : 'text-slate-500'}`}>{r.code}</p>
+                     </div>
+                  </div>
+                  {(r.creatorId === user?.id || user?.role === 'ADMIN') && r.code !== 'GENERAL' && (
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}
+                       className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${activeRoom?.id === r.id ? 'hover:bg-white/20 text-white' : 'hover:bg-rose-50 text-slate-400 hover:text-rose-500'}`}
+                     >
+                        <X size={14} />
+                     </button>
+                  )}
+               </div>
+            ))}
+         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth z-10 custom-scrollbar">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 opacity-50">
-            <MessageCircle size={48} className="mb-4" />
-            <p className="font-bold">Chưa có tin nhắn nào trong phòng này.</p>
-          </div>
-        )}
-        
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => {
-            const isMe = msg.userId === user?.id;
-            return (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                key={msg.id}
-                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-              >
-                <div className={`flex items-center gap-2 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {msg.user?.name || 'Unknown'}
-                  </span>
-                  {msg.user?.role === 'ADMIN' && (
-                    <Shield size={12} className="text-indigo-500" />
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+         {activeRoom ? (
+            <>
+               {/* Chat Header */}
+               <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50 flex justify-between items-center z-20">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center">
+                        <MessageCircle size={20} className="text-indigo-600 dark:text-indigo-400" />
+                     </div>
+                     <div>
+                        <h4 className="font-black text-sm uppercase tracking-tighter">{activeRoom.name}</h4>
+                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest animate-pulse">Trực tuyến</p>
+                     </div>
+                  </div>
+                  <div className="hidden sm:block text-[10px] font-black text-slate-400 uppercase">Code: {activeRoom.code}</div>
+               </div>
+
+               {/* Messages Area */}
+               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth z-10 custom-scrollbar bg-slate-50/50 dark:bg-[#0B1120]/50">
+                  {messages.length === 0 && (
+                     <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 opacity-50">
+                        <MessageCircle size={48} className="mb-4" />
+                        <p className="font-bold">Hãy là người đầu tiên lên tiếng!</p>
+                     </div>
                   )}
-                  <span className="text-[10px] text-slate-400/70 dark:text-slate-500">
-                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {(isMe || user?.role === 'ADMIN') && (
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      className="p-1 text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition-colors cursor-pointer rounded-full hover:bg-red-50 dark:hover:bg-red-500/10"
-                      title="Thu hồi tin nhắn"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-                <div
-                  className={`max-w-[85%] sm:max-w-[75%] px-5 py-3 rounded-2xl text-sm break-words shadow-sm leading-relaxed ${
-                    isMe
-                      ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-sm shadow-indigo-500/20'
-                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm border border-slate-100 dark:border-slate-700/50 shadow-slate-200/50 dark:shadow-none'
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        <div ref={messagesEndRef} className="h-1" />
+                  
+                  <AnimatePresence initial={false}>
+                     {messages.map((msg) => {
+                        const isMe = msg.userId === user?.id;
+                        return (
+                           <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              key={msg.id}
+                              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                           >
+                              <div className={`flex items-center gap-2 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{msg.user?.name || 'User'}</span>
+                                 {msg.user?.role === 'ADMIN' && <Shield size={12} className="text-indigo-500" />}
+                                 <span className="text-[10px] text-slate-400/70">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                 {(isMe || user?.role === 'ADMIN') && (
+                                    <button onClick={() => handleDeleteMessage(msg.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                                 )}
+                              </div>
+                              <div className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm break-words shadow-sm leading-relaxed ${isMe ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-sm' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm border border-slate-100 dark:border-slate-700/50'}`}>
+                                 {msg.content}
+                              </div>
+                           </motion.div>
+                        );
+                     })}
+                  </AnimatePresence>
+                  <div ref={messagesEndRef} className="h-1" />
+               </div>
+
+               {/* Input Area */}
+               <div className="p-4 sm:p-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800/50 z-20">
+                  <form onSubmit={handleSendMessage} className="flex gap-3">
+                     <input
+                        type="text"
+                        className="flex-1 px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 shadow-inner"
+                        placeholder={`Nhắn tin cho nhóm ${activeRoom.name}...`}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                     />
+                     <button type="submit" disabled={!newMessage.trim()} className="px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-2xl transition-all shadow-lg transform hover:scale-105 active:scale-95 flex items-center justify-center">
+                        <Send size={20} />
+                     </button>
+                  </form>
+               </div>
+            </>
+         ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-10 text-slate-400">
+               <Hash size={64} className="mb-6 opacity-20" />
+               <p className="text-xl font-black">Chọn một phòng để bắt đầu!</p>
+            </div>
+         )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 sm:p-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800/50 z-20">
-        <form onSubmit={handleSendMessage} className="flex gap-3 max-w-4xl mx-auto">
-          <input
-            type="text"
-            className="flex-1 px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 shadow-inner"
-            placeholder="Nhập tin nhắn của bạn..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={!newMessage.trim()}
-            className="px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-2xl transition-all shadow-lg shadow-indigo-500/25 disabled:shadow-none transform hover:scale-105 active:scale-95 disabled:transform-none flex items-center justify-center"
-          >
-            <Send size={20} className={newMessage.trim() ? "translate-x-0.5 -translate-y-0.5" : ""} />
-          </button>
-        </form>
-      </div>
+      {/* Create Room Modal */}
+      <AnimatePresence>
+         {showCreateRoom && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-900 w-full max-w-md p-8 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex justify-between items-center mb-6">
+                     <h3 className="text-2xl font-black tracking-tight">Tạo phòng mới</h3>
+                     <button onClick={() => setShowAddRoom(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
+                  </div>
+                  <form onSubmit={handleCreateRoom} className="space-y-4">
+                     <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Tên phòng</label>
+                        <input type="text" placeholder="VD: Nhóm học JS, Giải bài tập 1..." required className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold" value={newRoomData.name} onChange={(e) => setNewRoomData({ ...newRoomData, name: e.target.value })} />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mã tham gia (Viết liền, không dấu)</label>
+                        <input type="text" placeholder="VD: NHOM1, LOP12A..." required className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold uppercase" value={newRoomData.code} onChange={(e) => setNewRoomData({ ...newRoomData, code: e.target.value })} />
+                     </div>
+                     <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" onClick={() => setShowAddRoom(false)} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">Hủy</button>
+                        <button type="submit" className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all transform hover:scale-105 active:scale-95">TẠO PHÒNG</button>
+                     </div>
+                  </form>
+               </motion.div>
+            </div>
+         )}
+      </AnimatePresence>
     </div>
   );
 };

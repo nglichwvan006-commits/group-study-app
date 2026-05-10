@@ -95,7 +95,7 @@ const Profile: React.FC = () => {
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">{profile.badge} • Cấp bậc {profile.level}</p>
                 <div className="flex gap-4 mt-4 text-sm text-slate-400 font-medium">
                    <span className="flex items-center gap-1.5"><Calendar size={14}/> Tham gia {new Date(profile.createdAt).toLocaleDateString()}</span>
-                   <span className="flex items-center gap-1.5"><Book size={14}/> {profile.submissions?.length || 0} bài tập</span>
+                   <span className="flex items-center gap-1.5"><Book size={14}/> {profile.submissions?.length || 0} bài tập hoàn thành</span>
                 </div>
              </div>
              {isMyProfile && (

@@ -137,14 +137,14 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
         });
 
         const newPoints = Object.values(bestScores).reduce((a: number, b: number) => a + b, 0);
-        const newLevel = Math.floor(newPoints / 100) + 1;
+        const newLevel = Math.floor(newPoints / 2000) + 1;
         
         let newBadge = "Bronze";
-        if (newPoints >= 1000) newBadge = "Master";
-        else if (newPoints >= 500) newBadge = "Diamond";
-        else if (newPoints >= 300) newBadge = "Platinum";
-        else if (newPoints >= 150) newBadge = "Gold";
-        else if (newPoints >= 50) newBadge = "Silver";
+        if (newPoints >= 10000) newBadge = "Master";
+        else if (newPoints >= 5000) newBadge = "Diamond";
+        else if (newPoints >= 3000) newBadge = "Platinum";
+        else if (newPoints >= 1500) newBadge = "Gold";
+        else if (newPoints >= 500) newBadge = "Silver";
 
         await (tx as any).user.update({
           where: { id: user.id },

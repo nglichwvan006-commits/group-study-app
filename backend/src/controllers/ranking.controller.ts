@@ -5,9 +5,6 @@ import { AuthRequest } from "../middleware/auth.middleware";
 export const getLeaderboard = async (req: Request, res: Response) => {
   try {
     const users = await (prisma.user as any).findMany({
-      where: {
-        totalPoints: { gt: 0 }
-      },
       orderBy: { totalPoints: "desc" },
       select: { id: true, name: true, totalPoints: true, level: true, badge: true },
       take: 100,

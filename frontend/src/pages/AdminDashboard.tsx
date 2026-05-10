@@ -72,6 +72,18 @@ const AdminDashboard: React.FC = () => {
     toast.success('Đã làm mới dữ liệu!');
   };
 
+  const handleSyncXP = async () => {
+    const loadingToast = toast.loading('Đang đồng bộ lại điểm toàn hệ thống...');
+    try {
+      await api.post('/admin/sync-xp');
+      toast.success('Đồng bộ điểm thành công!', { id: loadingToast });
+      fetchUsers();
+      fetchLeaderboard();
+    } catch (error) {
+      toast.error('Lỗi khi đồng bộ điểm', { id: loadingToast });
+    }
+  };
+
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     const loadingToast = toast.loading('Đang tạo tài khoản...');
@@ -285,6 +297,12 @@ const AdminDashboard: React.FC = () => {
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Người dùng</h2>
                     <div className="flex gap-2 w-full sm:w-auto">
                       <button
+                        onClick={handleSyncXP}
+                        className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/25 transform hover:scale-105 active:scale-95 font-semibold"
+                      >
+                        <RefreshCw size={20} /> Đồng bộ điểm
+                      </button>
+                      <button
                         onClick={() => setShowAddMember(true)}
                         className="flex-1 sm:flex-none bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-105 active:scale-95 font-semibold"
                       >
@@ -416,7 +434,7 @@ const AdminDashboard: React.FC = () => {
                               <span className={`text-xl font-black w-8 text-center ${index === 0 ? 'text-amber-400' : index === 1 ? 'text-slate-400' : index === 2 ? 'text-amber-700' : 'text-slate-300'}`}>#{index + 1}</span>
                               <div>
                                 <p className="font-bold text-slate-900 dark:text-white">{u.name}</p>
-                                <p className="text-xs text-slate-500">Cấp độ {u.level} • Huy hiệu: {u.badge}</p>
+                                <p className="text-xs text-slate-500">Cấp bậc {u.level} • Huy hiệu: {u.badge}</p>
                               </div>
                             </div>
                             <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{u.totalPoints} <span className="text-sm font-medium text-slate-400">pts</span></div>

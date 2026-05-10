@@ -19,6 +19,7 @@ const MemberDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchAssignments();
@@ -72,6 +73,20 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
+  const handleReplyNotification = async (id: string) => {
+    const text = replyText[id];
+    if (!text?.trim()) return;
+
+    const loadingToast = toast.loading('Đang gửi phản hồi...');
+    try {
+      await api.post(`/ranking/notifications/${id}/reply`, { message: text });
+      toast.success('Đã gửi phản hồi thành công!', { id: loadingToast });
+      setReplyText({ ...replyText, [id]: '' });
+    } catch (error) {
+      toast.error('Lỗi khi gửi phản hồi', { id: loadingToast });
+    }
+  };
+
   // --- HÀM CHẤM ĐIỂM AI SIÊU ỔN ĐỊNH (SUPER ROBUST AI GRADING) ---
   const performAIGrading = async (content: string, assignment: any) => {
     const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -111,34 +126,29 @@ Code: ${content}`;
     if (!selectedAssignment) return;
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Đang xử lý bài làm...');
+    const loadingToast = toast.loading('Đang gửi bài làm...');
     
     try {
       // 1. Lưu code
-      const saveRes = await api.post('/assignments/submit', {
+      await api.post('/assignments/submit', {
         assignmentId: selectedAssignment.id,
         content: submissionContent,
       });
-      const submissionId = saveRes.data.id;
 
-      // 2. Chấm AI (nếu có key)
-      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (geminiKey) {
-        toast.loading('AI đang chấm điểm (Tiếng Việt)...', { id: loadingToast });
-        const result = await performAIGrading(submissionContent, selectedAssignment);
-        await api.patch(`/assignments/submissions/${submissionId}/ai-result`, {
-          score: Math.min(result.score, selectedAssignment.maxScore),
-          feedback: result.feedback
-        });
-        toast.success(`Chấm xong! Bạn đạt ${result.score} điểm.`, { id: loadingToast });
-      } else {
-        toast.success('Đã nộp bài! Đang chờ Backend chấm điểm...', { id: loadingToast });
-      }
+      toast.success('Đã nộp bài thành công! Vui lòng tải lại trang sau vài giây để xem kết quả điểm AI.', { 
+        id: loadingToast,
+        duration: 5000 
+      });
 
       setSubmissionContent('');
       setSelectedAssignment(null);
-      fetchMySubmissions();
-      fetchLeaderboard();
+      
+      // Refresh data after a short delay
+      setTimeout(() => {
+        fetchMySubmissions();
+        fetchLeaderboard();
+        fetchNotifications();
+      }, 3000);
       
     } catch (error: any) {
       toast.error('Lỗi: ' + error.message, { id: loadingToast });
@@ -369,6 +379,29 @@ Code: ${content}`;
                            {!n.isRead && <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full">NEW</span>}
                         </div>
                         <p className="text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{n.message}</p>
+                        
+                        {/* Reply Section */}
+                        {n.senderId && (
+                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex gap-2">
+                              <input 
+                                type="text" 
+                                placeholder="Nhập phản hồi của bạn..." 
+                                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={replyText[n.id] || ''}
+                                onChange={(e) => setReplyText({ ...replyText, [n.id]: e.target.value })}
+                                onKeyPress={(e) => e.key === 'Enter' && handleReplyNotification(n.id)}
+                              />
+                              <button 
+                                onClick={() => handleReplyNotification(n.id)}
+                                className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
+                              >
+                                <Send size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         <p className="text-[10px] font-black text-slate-400 mt-4 uppercase tracking-tighter">{new Date(n.createdAt).toLocaleString('vi-VN')}</p>
                       </motion.div>
                     ))}

@@ -19,6 +19,10 @@ const AdminDashboard: React.FC = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', password: '' });
 
+  // Notification form
+  const [showSendNotification, setShowSendNotification] = useState<string | null>(null); // userId
+  const [notificationData, setNotificationData] = useState({ title: '', message: '' });
+
   // Assignment form
   const [showAddAssignment, setShowAddAssignment] = useState(false);
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', language: 'javascript', maxScore: 100, rubric: '' });
@@ -60,6 +64,24 @@ const AdminDashboard: React.FC = () => {
       toast.success('Tạo tài khoản thành công!', { id: loadingToast });
     } catch (error) {
       toast.error('Lỗi khi tạo tài khoản', { id: loadingToast });
+    }
+  };
+
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showSendNotification) return;
+
+    const loadingToast = toast.loading('Đang gửi thông báo...');
+    try {
+      await api.post('/admin/notifications', {
+        userId: showSendNotification,
+        ...notificationData
+      });
+      setShowSendNotification(null);
+      setNotificationData({ title: '', message: '' });
+      toast.success('Đã gửi thông báo!', { id: loadingToast });
+    } catch (error) {
+      toast.error('Lỗi khi gửi thông báo', { id: loadingToast });
     }
   };
 
@@ -280,6 +302,9 @@ const AdminDashboard: React.FC = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right">
                                 <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => setShowSendNotification(u.id)} title="Gửi thông báo" className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-all">
+                                    <MessageSquare size={16} />
+                                  </button>
                                   <button onClick={() => handleToggleMute(u.id, u.isMuted)} title={u.isMuted ? 'Bỏ cấm' : 'Cấm chat'} className={`p-2 rounded-xl transition-all ${u.isMuted ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-400'}`}>
                                     {u.isMuted ? <Mic size={16} /> : <MicOff size={16} />}
                                   </button>
@@ -295,6 +320,25 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     {isLoading && <div className="p-12 text-center text-slate-500 dark:text-slate-400 font-medium animate-pulse">Đang tải dữ liệu...</div>}
                   </div>
+
+                  {/* Notification Modal */}
+                  <AnimatePresence>
+                    {showSendNotification && (
+                      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-900 w-full max-w-md p-8 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+                           <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><MessageSquare className="text-indigo-500"/> Gửi thông báo đến {users.find(u => u.id === showSendNotification)?.name}</h3>
+                           <form onSubmit={handleSendNotification} className="space-y-4">
+                              <input type="text" placeholder="Tiêu đề thông báo" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" value={notificationData.title} onChange={(e) => setNotificationData({ ...notificationData, title: e.target.value })} />
+                              <textarea placeholder="Nội dung tin nhắn..." required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" rows={4} value={notificationData.message} onChange={(e) => setNotificationData({ ...notificationData, message: e.target.value })}></textarea>
+                              <div className="flex justify-end gap-3 pt-2">
+                                 <button type="button" onClick={() => setShowSendNotification(null)} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium">Hủy</button>
+                                 <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20">Gửi ngay</button>
+                              </div>
+                           </form>
+                        </motion.div>
+                      </div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 

@@ -82,6 +82,25 @@ export const sendWarning = async (req: Request, res: Response) => {
   }
 };
 
+export const sendNotification = async (req: any, res: Response) => {
+  const { userId, title, message } = req.body;
+  const adminId = req.user?.id;
+
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        senderId: adminId,
+        title,
+        message,
+      },
+    });
+    res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ message: "Error sending notification" });
+  }
+};
+
 export const overrideScore = async (req: any, res: any) => {
   const { id } = req.params;
   const { score, feedback } = req.body;

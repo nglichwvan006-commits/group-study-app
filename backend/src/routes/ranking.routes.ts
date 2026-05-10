@@ -9,5 +9,6 @@ router.use(authenticate);
 router.get("/leaderboard", getLeaderboard);
 router.get("/notifications", getNotifications);
 router.patch("/notifications/read", markNotificationsRead);
+router.post("/notifications/:id/reply", replyToNotification);
 
 export default router;

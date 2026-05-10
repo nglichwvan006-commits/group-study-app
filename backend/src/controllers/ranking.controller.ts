@@ -52,3 +52,32 @@ export const markNotificationsRead = async (req: AuthRequest, res: Response) => 
     res.status(500).json({ message: "Error updating notifications" });
   }
 };
+
+export const replyToNotification = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { message } = req.body;
+  const userId = req.user?.id;
+
+  try {
+    const original = await prisma.notification.findUnique({
+      where: { id, userId },
+    });
+
+    if (!original || !original.senderId) {
+      return res.status(404).json({ message: "Original notification not found or cannot be replied to" });
+    }
+
+    const reply = await prisma.notification.create({
+      data: {
+        userId: original.senderId, // Recipient is the original sender (Admin)
+        senderId: userId,         // Sender is the current user
+        title: `Phản hồi: ${original.title}`,
+        message: message,
+      },
+    });
+
+    res.status(201).json(reply);
+  } catch (error) {
+    res.status(500).json({ message: "Error replying to notification" });
+  }
+};

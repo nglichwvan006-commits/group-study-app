@@ -109,12 +109,25 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
     });
 
     if (!submission) return res.status(404).json({ message: "Submission not found" });
-    // Allow re-submitting if status was FAILED
     if (submission.status === "GRADED") return res.status(400).json({ message: "Already graded" });
 
     const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
 
     await prisma.$transaction(async (tx) => {
+      // Find previous graded submission for this assignment
+      const previousSubmissions = await tx.submission.findMany({
+        where: {
+          userId: submission.userId,
+          assignmentId: submission.assignmentId,
+          status: "GRADED",
+          id: { not: submission.id }
+        },
+        orderBy: { gradedAt: 'desc' },
+        take: 1
+      });
+
+      const oldScore = previousSubmissions.length > 0 ? (previousSubmissions[0].score || 0) : 0;
+
       await tx.submission.update({
         where: { id },
         data: {
@@ -127,16 +140,16 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
 
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (user) {
-        const newPoints = user.totalPoints + clampedScore;
+        // Calculate new total points: total - old + new
+        const newPoints = Math.max(0, user.totalPoints - oldScore + clampedScore);
         const newLevel = Math.floor(newPoints / 100) + 1;
         
-        let newBadge = user.badge;
+        let newBadge = "Bronze";
         if (newPoints >= 1000) newBadge = "Master";
         else if (newPoints >= 500) newBadge = "Diamond";
         else if (newPoints >= 300) newBadge = "Platinum";
         else if (newPoints >= 150) newBadge = "Gold";
         else if (newPoints >= 50) newBadge = "Silver";
-        else newBadge = "Bronze";
 
         await tx.user.update({
           where: { id: userId },

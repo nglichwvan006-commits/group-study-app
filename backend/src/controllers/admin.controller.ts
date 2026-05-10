@@ -7,7 +7,7 @@ export const getUsers = async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, email: true, name: true, role: true, isMuted: true, createdAt: true, totalPoints: true, level: true, badge: true },
+      select: { id: true, email: true, name: true, role: true, isMuted: true, bannedUntil: true, createdAt: true, totalPoints: true, level: true, badge: true },
     });
     res.json(users);
   } catch (error) {
@@ -66,6 +66,61 @@ export const muteUser = async (req: Request, res: Response) => {
   }
 };
 
+export const banUser = async (req: any, res: Response) => {
+  const { id } = req.params;
+  const { bannedUntil } = req.body; // ISO string or null
+
+  try {
+    const user = await (prisma.user as any).update({
+      where: { id: String(id) },
+      data: { bannedUntil: bannedUntil ? new Date(bannedUntil) : null },
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Error banning user" });
+  }
+};
+
+export const resetUserPoints = async (req: any, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    await (prisma.user as any).update({
+      where: { id: String(id) },
+      data: { totalPoints: 0, level: 1, badge: "Bronze" },
+    });
+    
+    // Also delete all their graded submissions to keep sync
+    await (prisma as any).submission.deleteMany({
+      where: { userId: String(id) }
+    });
+
+    res.json({ message: "User points reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error resetting user points" });
+  }
+};
+
+export const resetAllPoints = async (req: any, res: Response) => {
+  const { password } = req.body;
+
+  if (password !== "412006") {
+    return res.status(403).json({ message: "Mật khẩu xác nhận reset không chính xác!" });
+  }
+
+  try {
+    await prisma.$transaction([
+      (prisma.user as any).updateMany({
+        data: { totalPoints: 0, level: 1, badge: "Bronze" },
+      }),
+      (prisma as any).submission.deleteMany({}),
+    ]);
+    res.json({ message: "Tất cả điểm số hệ thống đã được reset!" });
+  } catch (error) {
+    res.status(500).json({ message: "Error resetting all points" });
+  }
+};
+
 export const sendWarning = async (req: Request, res: Response) => {
   const { userId, message } = req.body;
 
@@ -96,7 +151,6 @@ export const sendNotification = async (req: any, res: Response) => {
       },
     });
 
-    // Also create a "Warning" entry if system uses it for notifications
     await (prisma as any).warning.create({
       data: {
         userId,
@@ -117,7 +171,6 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
 
     await prisma.$transaction(async (tx) => {
       for (const user of users) {
-        // Find best score for each assignment for this user
         const submissions = await (tx as any).submission.findMany({
           where: { 
             userId: user.id,
@@ -126,7 +179,6 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
           select: { assignmentId: true, score: true }
         });
 
-        // Group by assignment and take the max score (in case of multiple graded submissions)
         const bestScores: { [key: string]: number } = {};
         submissions.forEach((s: any) => {
           if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
@@ -183,7 +235,6 @@ export const overrideScore = async (req: any, res: any) => {
         },
       });
 
-      // Recalculate full XP for this user automatically from all best graded submissions
       const allUserSubmissions = await (tx as any).submission.findMany({
         where: { userId: submission.userId, status: "GRADED" },
         select: { assignmentId: true, score: true }

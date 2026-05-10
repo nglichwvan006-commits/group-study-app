@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/jwt";
 import { Role } from "../types/auth";
+import prisma from "../utils/prisma";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -10,16 +11,29 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
     const decoded = verifyAccessToken(token);
+    
+    // Check if user is banned
+    const user = await (prisma.user as any).findUnique({
+      where: { id: decoded.id },
+      select: { bannedUntil: true }
+    });
+
+    if (user?.bannedUntil && new Date(user.bannedUntil) > new Date()) {
+      return res.status(403).json({ 
+        message: "Tài khoản của bạn đã bị khóa!", 
+        bannedUntil: user.bannedUntil 
+      });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {

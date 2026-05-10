@@ -1,25 +1,34 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { LogIn, Mail, Lock, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LogIn, Mail, Lock, ShieldCheck, UserPlus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isLoginView, setIsLoginView] = useState(true);
+  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleMemberLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    
+    const endpoint = isLoginView ? '/auth/login' : '/auth/register';
+    const payload = isLoginView 
+      ? { email: formData.email, password: formData.password }
+      : { email: formData.email, password: formData.password, name: formData.name };
+
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post(endpoint, payload);
       login(response.data.accessToken, response.data.refreshToken, response.data.user);
+      toast.success(isLoginView ? 'Đăng nhập thành công!' : 'Đăng ký thành công!');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Authentication failed');
+      toast.error(err.response?.data?.message || 'Lỗi xác thực');
     } finally {
       setIsLoading(false);
     }
@@ -60,11 +69,39 @@ const Login: React.FC = () => {
             >
               <ShieldCheck className="text-white" size={32} />
             </motion.div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-4">Study Group</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Đăng nhập để tiếp tục học tập</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-4">Study Space</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+              {isLoginView ? 'Chào mừng bạn quay trở lại' : 'Gia nhập cộng đồng học tập'}
+            </p>
           </div>
 
-          <form onSubmit={handleMemberLogin} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-5">
+            <AnimatePresence mode='wait'>
+              {!isLoginView && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-1 overflow-hidden"
+                >
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Họ tên</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <UserPlus className="text-slate-400" size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      required={!isLoginView}
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-white"
+                      placeholder="Nguyễn Văn A"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email</label>
               <div className="relative">
@@ -76,8 +113,8 @@ const Login: React.FC = () => {
                   required
                   className="w-full pl-11 pr-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                   placeholder="member@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
             </div>
@@ -93,8 +130,8 @@ const Login: React.FC = () => {
                   required
                   className="w-full pl-11 pr-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
             </div>
@@ -120,14 +157,23 @@ const Login: React.FC = () => {
                   Đang xử lý...
                 </span>
               ) : (
-                <><LogIn size={20} /> Đăng nhập thành viên</>
+                <>{isLoginView ? <><LogIn size={20} /> Đăng nhập</> : <><UserPlus size={20} /> Đăng ký tài khoản</>}</>
               )}
             </button>
           </form>
 
+          <div className="text-center">
+            <button 
+              onClick={() => setIsLoginView(!isLoginView)}
+              className="text-indigo-600 dark:text-indigo-400 text-sm font-bold hover:underline underline-offset-4"
+            >
+              {isLoginView ? 'Bạn chưa có tài khoản? Đăng ký ngay' : 'Đã có tài khoản? Đăng nhập tại đây'}
+            </button>
+          </div>
+
           <div className="relative flex items-center py-2">
             <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-            <span className="flex-shrink-0 mx-4 text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">Hoặc (Dành cho Admin)</span>
+            <span className="flex-shrink-0 mx-4 text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">Hoặc (Admin / Google)</span>
             <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
           </div>
 
@@ -136,7 +182,7 @@ const Login: React.FC = () => {
             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-semibold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] active:scale-95 shadow-sm"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-            Đăng nhập với Google
+            Tiếp tục với Google
           </button>
         </div>
       </motion.div>

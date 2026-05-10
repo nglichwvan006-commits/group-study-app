@@ -95,8 +95,18 @@ export const sendNotification = async (req: any, res: Response) => {
         message,
       },
     });
+
+    // Also create a "Warning" entry if system uses it for notifications
+    await (prisma as any).warning.create({
+      data: {
+        userId,
+        message: `[THÔNG BÁO] ${title}: ${message}`,
+      }
+    });
+
     res.status(201).json(notification);
   } catch (error) {
+    console.error("Notification Error:", error);
     res.status(500).json({ message: "Error sending notification" });
   }
 };

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import passport from "passport";
-import { loginMember, googleCallback, refreshToken, logout, getMe } from "../controllers/auth.controller";
+import { loginMember, googleCallback, refreshToken, logout, getMe, registerMember } from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Member Login
-router.post("/login", loginMember);
+// Member Auth
+router.post("/login", loginMember as any);
+router.post("/register", registerMember as any);
 
 // Google OAuth
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));

@@ -4,6 +4,55 @@ import prisma from "../utils/prisma";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 import { JWTPayload, Role } from "../types/auth";
 
+export const registerMember = async (req: Request, res: Response) => {
+  const { email, password, name } = req.body;
+
+  try {
+    const existingUser = await (prisma.user as any).findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email này đã được sử dụng" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await (prisma.user as any).create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: Role.MEMBER,
+      },
+    });
+
+    const payload: JWTPayload = { id: user.id, email: user.email, role: user.role as Role };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    res.status(201).json({ 
+      accessToken, 
+      refreshToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        totalPoints: user.totalPoints,
+        level: user.level,
+        badge: user.badge
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi đăng ký tài khoản" });
+  }
+};
+
 export const loginMember = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 

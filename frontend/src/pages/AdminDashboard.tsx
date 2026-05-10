@@ -520,9 +520,9 @@ const AdminDashboard: React.FC = () => {
               )}
 
               {activeTab === 'chat' && (
-                <div className="h-[650px] flex flex-col pb-4">
+                <div className="h-[650px] max-h-[650px] flex flex-col pb-4 overflow-hidden">
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-4 sm:mb-6">Phòng Chat</h2>
-                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col">
+                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-0">
                     <Chat />
                   </div>
                 </div>

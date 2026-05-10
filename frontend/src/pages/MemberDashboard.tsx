@@ -431,9 +431,9 @@ Code: ${content}`;
 
               {activeTab === 'resources' && <ResourceLibrary />}
               {activeTab === 'chat' && (
-                <div className="flex-1 flex flex-col h-[650px] mb-6">
+                <div className="flex-1 flex flex-col h-[650px] max-h-[650px] mb-6 overflow-hidden">
                   <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-6">Phòng chat thảo luận</h2>
-                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col">
+                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-0">
                     <Chat />
                   </div>
                 </div>

@@ -47,12 +47,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('accessToken');
     if (storedUser && storedToken) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setAccessToken(storedToken);
-      
-      // Check for ban on initial load
-      if (parsedUser.bannedUntil && new Date(parsedUser.bannedUntil) > new Date()) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setAccessToken(storedToken);
+        
+        if (parsedUser.bannedUntil && new Date(parsedUser.bannedUntil) > new Date()) {
+          logout();
+        }
+      } catch (e) {
+        console.error("Auth initialization error", e);
         logout();
       }
     }
@@ -95,9 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       if (error.response?.status === 403) {
         logout();
-        const msg = error.response.data.message || "Tài khoản bị khóa";
-        const date = error.response.data.bannedUntil;
-        toast.error(`${msg}${date ? ' đến ' + new Date(date).toLocaleDateString() : ''}`, { duration: 10000 });
       }
       console.error('Error refreshing user profile', error);
     }

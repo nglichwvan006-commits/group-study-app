@@ -228,9 +228,10 @@ Code: ${content}`;
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.badge || 'Bronze'}</span>
             </div>
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-               <motion.div initial={{ width: 0 }} animate={{ width: `${(user?.totalPoints || 0) % 100}%` }} className="h-full bg-indigo-500 rounded-full" />
+               <motion.div initial={{ width: 0 }} animate={{ width: `${((user?.totalPoints || 0) % 2000) / 20}%` }} className="h-full bg-indigo-500 rounded-full" />
             </div>
-            <p className="text-[9px] text-slate-400 mt-1 font-bold text-right">{(user?.totalPoints || 0) % 100} / 100 XP</p>
+            <p className="text-[9px] text-slate-400 mt-1 font-bold text-right">{(user?.totalPoints || 0) % 2000} / 2000 XP</p>
+            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-2">Tổng điểm bài tập: {user?.totalPoints || 0}</p>
           </div>
         </div>
 

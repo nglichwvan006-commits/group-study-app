@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy } from 'lucide-react';
+import { User, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -277,10 +277,7 @@ const AdminDashboard: React.FC = () => {
         
         <div className="p-4 sm:p-8 max-w-7xl mx-auto h-full flex flex-col">
           {/* Header Actions */}
-          <div className="flex justify-end gap-3 mb-4">
-             <button onClick={handleSyncXP} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">
-                Đồng bộ lại XP
-             </button>
+          <div className="flex justify-end mb-4">
              <button onClick={handleRefreshData} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
                 Làm mới dữ liệu
              </button>
@@ -298,12 +295,20 @@ const AdminDashboard: React.FC = () => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Người dùng</h2>
-                    <button
-                      onClick={() => setShowAddMember(true)}
-                      className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-105 active:scale-95 font-semibold"
-                    >
-                      <Plus size={20} /> Thêm thành viên
-                    </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={handleSyncXP}
+                        className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/25 transform hover:scale-105 active:scale-95 font-semibold"
+                      >
+                        <RefreshCw size={20} /> Đồng bộ XP
+                      </button>
+                      <button
+                        onClick={() => setShowAddMember(true)}
+                        className="flex-1 sm:flex-none bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-105 active:scale-95 font-semibold"
+                      >
+                        <Plus size={20} /> Thêm thành viên
+                      </button>
+                    </div>
                   </div>
 
                   <AnimatePresence>

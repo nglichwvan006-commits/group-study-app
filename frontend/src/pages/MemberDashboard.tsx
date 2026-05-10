@@ -333,7 +333,31 @@ Code: ${content}`;
 
                             <form onSubmit={handleSubmitAssignment} className="space-y-6">
                               <div className="h-[450px] border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-2xl ring-8 ring-slate-100 dark:ring-slate-800/50">
-                                <Editor height="100%" language={selectedAssignment.language.toLowerCase()} theme={darkMode ? "vs-dark" : "light"} value={submissionContent} onChange={(val) => setSubmissionContent(val || '')} options={{ minimap: { enabled: false }, fontSize: 14, padding: { top: 20 }, scrollBeyondLastLine: false, automaticLayout: true, fontFamily: 'Fira Code, monospace' }} />
+                                <Editor 
+                                  height="100%" 
+                                  language={selectedAssignment.language.toLowerCase()} 
+                                  theme={darkMode ? "vs-dark" : "light"} 
+                                  value={submissionContent} 
+                                  onChange={(val) => setSubmissionContent(val || '')} 
+                                  options={{ 
+                                    minimap: { enabled: false }, 
+                                    fontSize: 14, 
+                                    padding: { top: 20 }, 
+                                    scrollBeyondLastLine: false, 
+                                    automaticLayout: true, 
+                                    fontFamily: 'Fira Code, monospace',
+                                    suggestOnTriggerCharacters: true,
+                                    quickSuggestions: { other: true, comments: true, strings: true },
+                                    acceptSuggestionOnEnter: "on",
+                                    tabCompletion: "on",
+                                    wordWrap: "on",
+                                    folding: true,
+                                    lineNumbers: "on",
+                                    renderLineHighlight: "all",
+                                    formatOnPaste: true,
+                                    formatOnType: true
+                                  }} 
+                                />
                               </div>
                               <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-5 rounded-3xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-500/30 transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
                                 {isSubmitting ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Send size={22} /> Nộp bài & Cập nhật điểm AI</>}

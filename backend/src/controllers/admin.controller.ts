@@ -81,6 +81,24 @@ export const banUser = async (req: any, res: Response) => {
   }
 };
 
+export const changeUserPassword = async (req: any, res: Response) => {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  if (!password) return res.status(400).json({ message: "Password is required" });
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await (prisma.user as any).update({
+      where: { id: String(id) },
+      data: { password: hashedPassword },
+    });
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error changing password" });
+  }
+};
+
 export const resetUserPoints = async (req: any, res: Response) => {
   const { id } = req.params;
 

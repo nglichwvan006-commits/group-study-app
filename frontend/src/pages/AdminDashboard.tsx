@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock } from 'lucide-react';
+import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock, Key } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,7 @@ const AdminDashboard: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
 
   // User form
   const [showAddMember, setShowAddMember] = useState(false);
@@ -359,6 +360,20 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className="flex flex-col sm:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800">
+                    <div className="relative flex-1 w-full">
+                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                       <input 
+                         type="text" 
+                         placeholder="Tìm kiếm theo tên hoặc email..." 
+                         className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                         value={userSearch}
+                         onChange={(e) => setUserSearch(e.target.value)}
+                       />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4">Đang hiển thị {filteredUsers.length} / {users.length} thành viên</p>
+                  </div>
+
                   <AnimatePresence>
                     {showAddMember && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 mb-6 overflow-hidden">
@@ -385,7 +400,7 @@ const AdminDashboard: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {users.map((u, i) => (
+                          {filteredUsers.map((u, i) => (
                             <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all">
                               <td className="px-6 py-4 whitespace-nowrap"><p className="font-bold">{u.name}</p><p className="text-[10px] font-black text-indigo-500 uppercase">{u.totalPoints} PTS • CẤP {u.level}</p></td>
                               <td className="px-6 py-4 text-sm text-slate-500">{u.email}</td>
@@ -398,6 +413,7 @@ const AdminDashboard: React.FC = () => {
                               <td className="px-6 py-4 text-right">
                                  <div className="flex items-center justify-end gap-1.5">
                                     <button onClick={() => setShowSendNotification(u.id)} title="Gửi thông báo" className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"><MessageSquare size={16}/></button>
+                                    <button onClick={() => handleResetPassword(u.id)} title="Đổi mật khẩu" className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><Key size={16}/></button>
                                     <button onClick={() => handleResetUserPoints(u.id, u.name)} title="Reset điểm" className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100"><RotateCcw size={16}/></button>
                                     <button onClick={() => u.bannedUntil && new Date(u.bannedUntil) > new Date() ? handleUnbanUser(u.id) : setShowBanModal(u.id)} title="Khóa tài khoản" className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Ban size={16}/></button>
                                     <button onClick={() => handleToggleMute(u.id, u.isMuted)} title="Cấm chat" className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">{u.isMuted ? <Mic size={16}/> : <MicOff size={16}/>}</button>
@@ -406,6 +422,11 @@ const AdminDashboard: React.FC = () => {
                               </td>
                             </tr>
                           ))}
+                          {filteredUsers.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="px-6 py-20 text-center text-slate-400 italic font-bold">Không tìm thấy người dùng nào phù hợp.</td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>

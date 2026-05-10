@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUsers, createMember, deleteUser, muteUser, sendWarning, overrideScore, sendNotification, syncAllUsersXP, resetAllPoints, resetUserPoints, banUser } from "../controllers/admin.controller";
+import { getUsers, createMember, deleteUser, muteUser, sendWarning, overrideScore, sendNotification, syncAllUsersXP, resetAllPoints, resetUserPoints, banUser, changeUserPassword } from "../controllers/admin.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
 import { Role } from "../types/auth";
 
@@ -12,6 +12,7 @@ router.post("/users", createMember as any);
 router.delete("/users/:id", deleteUser as any);
 router.patch("/users/:id/mute", muteUser as any);
 router.patch("/users/:id/ban", banUser as any);
+router.patch("/users/:id/password", changeUserPassword as any);
 router.post("/users/:id/reset-points", resetUserPoints as any);
 router.post("/notifications", sendNotification as any);
 router.post("/warnings", sendWarning as any);

@@ -43,6 +43,7 @@ model User {
   joinedRooms   ChatRoom[]     @relation("RoomParticipants")
   posts         Post[]
   comments      Comment[]
+  likes         Like[]
 }
 
 model Post {
@@ -52,7 +53,19 @@ model Post {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  Comment[]
+  likes     Like[]
   createdAt DateTime  @default(now())
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
 }
 
 model Comment {
@@ -98,7 +111,7 @@ model Assignment {
   creatorId   String
   creator     User         @relation("CreatedAssignments", fields: [creatorId], references: [id])
   submissions Submission[]
-  createdAt   DateTime     @default(now())
+  createdAt    DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
 

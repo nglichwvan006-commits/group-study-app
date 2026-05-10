@@ -22,6 +22,7 @@ export const searchUsers = async (req: any, res: Response) => {
 
 export const getProfile = async (req: any, res: Response) => {
   const { id } = req.params;
+  const currentUserId = req.user?.id;
   try {
     const user = await (prisma.user as any).findUnique({
       where: { id: String(id) },
@@ -52,14 +53,24 @@ export const getProfile = async (req: any, res: Response) => {
             comments: {
               include: { user: { select: { id: true, name: true } } },
               orderBy: { createdAt: "asc" }
-            }
+            },
+            likes: { select: { userId: true } }
           }
         },
       },
     });
 
     if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    res.json(user);
+
+    // Format posts
+    const formattedPosts = user.posts.map((p: any) => ({
+      ...p,
+      likeCount: p.likes.length,
+      isLiked: currentUserId ? p.likes.some((l: any) => l.userId === currentUserId) : false,
+      likes: undefined
+    }));
+
+    res.json({ ...user, posts: formattedPosts });
   } catch (error) {
     res.status(500).json({ message: "Lỗi lấy thông tin trang cá nhân" });
   }

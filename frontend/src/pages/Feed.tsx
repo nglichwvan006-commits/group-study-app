@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Trash2, MessageCircle, Heart, Share2, User } from 'lucide-react';
+import { Send, Trash2, MessageCircle, Heart, Share2, User, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';

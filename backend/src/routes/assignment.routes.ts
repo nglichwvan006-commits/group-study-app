@@ -5,15 +5,15 @@ import { Role } from "../types/auth";
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate as any);
 
-router.get("/", getAssignments);
-router.get("/my-submissions", getMySubmissions);
-router.post("/", authorize([Role.ADMIN]), createAssignment);
-router.patch("/:id", authorize([Role.ADMIN]), updateAssignment);
-router.delete("/:id", authorize([Role.ADMIN]), deleteAssignment);
-router.post("/submit", authorize([Role.MEMBER]), submitAssignment);
-router.patch("/submissions/:id/ai-result", authorize([Role.MEMBER]), submitAIResult);
-router.get("/:assignmentId/submissions", authorize([Role.ADMIN]), getSubmissions);
+router.get("/", getAssignments as any);
+router.get("/my-submissions", getMySubmissions as any);
+router.post("/", authorize([Role.ADMIN]) as any, createAssignment as any);
+router.patch("/:id", authorize([Role.ADMIN]) as any, updateAssignment as any);
+router.delete("/:id", authorize([Role.ADMIN]) as any, deleteAssignment as any);
+router.post("/submit", authorize([Role.MEMBER]) as any, submitAssignment as any);
+router.patch("/submissions/:id/ai-result", authorize([Role.MEMBER]) as any, submitAIResult as any);
+router.get("/:assignmentId/submissions", authorize([Role.ADMIN]) as any, getSubmissions as any);
 
 export default router;

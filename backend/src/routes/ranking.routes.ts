@@ -4,11 +4,11 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate as any);
 
-router.get("/leaderboard", getLeaderboard);
-router.get("/notifications", getNotifications);
-router.patch("/notifications/read", markNotificationsRead);
-router.post("/notifications/:id/reply", replyToNotification);
+router.get("/leaderboard", getLeaderboard as any);
+router.get("/notifications", getNotifications as any);
+router.patch("/notifications/read", markNotificationsRead as any);
+router.post("/notifications/:id/reply", replyToNotification as any);
 
 export default router;

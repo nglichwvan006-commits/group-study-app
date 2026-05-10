@@ -3,7 +3,7 @@ import prisma from "../utils/prisma";
 
 export const getRooms = async (req: any, res: Response) => {
   try {
-    const rooms = await prisma.chatRoom.findMany({
+    const rooms = await (prisma as any).chatRoom.findMany({
       orderBy: { createdAt: "desc" },
       include: { creator: { select: { name: true } } }
     });
@@ -18,7 +18,7 @@ export const createRoom = async (req: any, res: Response) => {
   const creatorId = req.user.id;
 
   try {
-    const room = await prisma.chatRoom.create({
+    const room = await (prisma as any).chatRoom.create({
       data: {
         name,
         code: code.toUpperCase(),
@@ -37,14 +37,14 @@ export const deleteRoom = async (req: any, res: Response) => {
   const userRole = req.user.role;
 
   try {
-    const room = await prisma.chatRoom.findUnique({ where: { id } });
+    const room = await (prisma as any).chatRoom.findUnique({ where: { id: String(id) } });
     if (!room) return res.status(404).json({ message: "Room not found" });
 
     if (room.creatorId !== userId && userRole !== "ADMIN") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    await prisma.chatRoom.delete({ where: { id } });
+    await (prisma as any).chatRoom.delete({ where: { id: String(id) } });
     res.json({ message: "Room deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting room" });
@@ -56,7 +56,7 @@ export const getChatHistory = async (req: Request, res: Response) => {
   if (!roomId) return res.json([]);
   
   try {
-    const messages = await prisma.chatMessage.findMany({
+    const messages = await (prisma as any).chatMessage.findMany({
       where: { roomId: String(roomId) },
       orderBy: { createdAt: "asc" },
       include: { user: { select: { name: true, role: true } } },
@@ -74,8 +74,8 @@ export const deleteMessage = async (req: any, res: any) => {
   const userRole = req.user.role;
 
   try {
-    const message = await prisma.chatMessage.findUnique({
-      where: { id },
+    const message = await (prisma as any).chatMessage.findUnique({
+      where: { id: String(id) },
     });
 
     if (!message) return res.status(404).json({ message: "Message not found" });
@@ -84,8 +84,8 @@ export const deleteMessage = async (req: any, res: any) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    await prisma.chatMessage.delete({
-      where: { id },
+    await (prisma as any).chatMessage.delete({
+      where: { id: String(id) },
     });
 
     res.json({ message: "Message deleted" });

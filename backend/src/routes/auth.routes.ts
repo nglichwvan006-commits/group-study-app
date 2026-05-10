@@ -20,6 +20,6 @@ router.get(
 // Token management
 router.post("/refresh-token", refreshToken);
 router.post("/logout", logout);
-router.get("/me", authenticate, getMe);
+router.get("/me", authenticate as any, getMe as any);
 
 export default router;

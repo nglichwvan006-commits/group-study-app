@@ -4,10 +4,10 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate as any);
 
-router.get("/", getResources);
-router.post("/", createResource);
-router.delete("/:id", deleteResource);
+router.get("/", getResources as any);
+router.post("/", createResource as any);
+router.delete("/:id", deleteResource as any);
 
 export default router;

@@ -5,15 +5,15 @@ import { Role } from "../types/auth";
 
 const router = Router();
 
-router.use(authenticate, authorize([Role.ADMIN]));
+router.use(authenticate as any, authorize([Role.ADMIN]) as any);
 
-router.get("/users", getUsers);
-router.post("/users", createMember);
-router.delete("/users/:id", deleteUser);
-router.patch("/users/:id/mute", muteUser);
-router.post("/notifications", sendNotification);
-router.post("/warnings", sendWarning);
-router.post("/sync-xp", syncAllUsersXP);
-router.patch("/submissions/:id/override", overrideScore);
+router.get("/users", getUsers as any);
+router.post("/users", createMember as any);
+router.delete("/users/:id", deleteUser as any);
+router.patch("/users/:id/mute", muteUser as any);
+router.post("/notifications", sendNotification as any);
+router.post("/warnings", sendWarning as any);
+router.post("/sync-xp", syncAllUsersXP as any);
+router.patch("/submissions/:id/override", overrideScore as any);
 
 export default router;

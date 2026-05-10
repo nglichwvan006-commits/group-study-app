@@ -1,8 +1,7 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import prisma from "../utils/prisma";
-import { AuthRequest } from "../middleware/auth.middleware";
 
-export const getResources = async (req: AuthRequest, res: Response) => {
+export const getResources = async (req: any, res: Response) => {
   try {
     const resources = await prisma.resource.findMany({
       orderBy: { createdAt: "desc" },
@@ -14,7 +13,7 @@ export const getResources = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const createResource = async (req: AuthRequest, res: Response) => {
+export const createResource = async (req: any, res: Response) => {
   const { title, url, type } = req.body;
   const userId = req.user?.id;
 
@@ -25,7 +24,7 @@ export const createResource = async (req: AuthRequest, res: Response) => {
       data: {
         title,
         url,
-        type, // "LINK" or "FILE"
+        type,
         userId,
       },
     });
@@ -35,20 +34,21 @@ export const createResource = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deleteResource = async (req: AuthRequest, res: Response) => {
+export const deleteResource = async (req: any, res: Response) => {
   const { id } = req.params;
   const userId = req.user?.id;
+  const userRole = req.user?.role;
 
   try {
-    const resource = await prisma.resource.findUnique({ where: { id } });
+    const resource = await prisma.resource.findUnique({ where: { id: String(id) } });
     if (!resource) return res.status(404).json({ message: "Resource not found" });
 
-    // Only owner or ADMIN can delete
-    if (resource.userId !== userId && req.user?.role !== "ADMIN") {
+    // Only creator or Admin can delete
+    if (resource.userId !== userId && userRole !== "ADMIN") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    await prisma.resource.delete({ where: { id } });
+    await prisma.resource.delete({ where: { id: String(id) } });
     res.json({ message: "Resource deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting resource" });

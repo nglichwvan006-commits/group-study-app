@@ -4,33 +4,26 @@ import { AuthRequest } from "../middleware/auth.middleware";
 
 export const getLeaderboard = async (req: Request, res: Response) => {
   try {
-    const leaderboard = await prisma.user.findMany({
+    const users = await (prisma.user as any).findMany({
       where: { role: "MEMBER" },
       orderBy: { totalPoints: "desc" },
-      select: {
-        id: true,
-        name: true,
-        totalPoints: true,
-        level: true,
-        badge: true,
-      },
+      select: { id: true, name: true, totalPoints: true, level: true, badge: true },
       take: 50,
     });
-    res.json(leaderboard);
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching leaderboard" });
   }
 };
 
-export const getNotifications = async (req: AuthRequest, res: Response) => {
+export const getNotifications = async (req: any, res: Response) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const notifications = await prisma.notification.findMany({
+    const notifications = await (prisma as any).notification.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      take: 20,
     });
     res.json(notifications);
   } catch (error) {
@@ -38,12 +31,12 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const markNotificationsRead = async (req: AuthRequest, res: Response) => {
+export const markNotificationsRead = async (req: any, res: Response) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    await prisma.notification.updateMany({
+    await (prisma as any).notification.updateMany({
       where: { userId, isRead: false },
       data: { isRead: true },
     });
@@ -53,24 +46,24 @@ export const markNotificationsRead = async (req: AuthRequest, res: Response) => 
   }
 };
 
-export const replyToNotification = async (req: AuthRequest, res: Response) => {
+export const replyToNotification = async (req: any, res: Response) => {
   const { id } = req.params;
   const { message } = req.body;
   const userId = req.user?.id;
 
   try {
-    const original = await prisma.notification.findUnique({
-      where: { id, userId },
+    const original = await (prisma as any).notification.findUnique({
+      where: { id: String(id), userId },
     });
 
     if (!original || !original.senderId) {
       return res.status(404).json({ message: "Original notification not found or cannot be replied to" });
     }
 
-    const reply = await prisma.notification.create({
+    const reply = await (prisma as any).notification.create({
       data: {
-        userId: original.senderId, // Recipient is the original sender (Admin)
-        senderId: userId,         // Sender is the current user
+        userId: original.senderId,
+        senderId: userId,
         title: `Phản hồi: ${original.title}`,
         message: message,
       },

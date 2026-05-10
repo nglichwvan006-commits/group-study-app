@@ -15,7 +15,7 @@ export const getAssignments = async (req: Request, res: Response) => {
   }
 };
 
-export const createAssignment = async (req: AuthRequest, res: Response) => {
+export const createAssignment = async (req: any, res: Response) => {
   const { title, description, deadline, language, maxScore, rubric } = req.body;
   const creatorId = req.user?.id;
 
@@ -39,14 +39,14 @@ export const createAssignment = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const submitAssignment = async (req: AuthRequest, res: Response) => {
+export const submitAssignment = async (req: any, res: Response) => {
   const { assignmentId, content } = req.body;
   const userId = req.user?.id;
 
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const submission = await prisma.submission.create({
+    const submission = await (prisma as any).submission.create({
       data: {
         content,
         userId,
@@ -55,7 +55,6 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
       },
     });
     
-    // We still keep the backend async as a fallback, but the frontend will usually win
     setTimeout(() => {
       gradeSubmissionAsync(submission.id);
     }, 0);
@@ -66,12 +65,12 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getSubmissions = async (req: AuthRequest, res: Response) => {
+export const getSubmissions = async (req: any, res: Response) => {
   const { assignmentId } = req.params;
 
   try {
-    const submissions = await prisma.submission.findMany({
-      where: { assignmentId },
+    const submissions = await (prisma as any).submission.findMany({
+      where: { assignmentId: String(assignmentId) },
       include: { user: { select: { name: true, email: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -81,12 +80,12 @@ export const getSubmissions = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getMySubmissions = async (req: AuthRequest, res: Response) => {
+export const getMySubmissions = async (req: any, res: Response) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const submissions = await prisma.submission.findMany({
+    const submissions = await (prisma as any).submission.findMany({
       where: { userId },
       include: { assignment: true },
       orderBy: { createdAt: "desc" },
@@ -97,14 +96,14 @@ export const getMySubmissions = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const submitAIResult = async (req: AuthRequest, res: Response) => {
+export const submitAIResult = async (req: any, res: Response) => {
   const { id } = req.params;
   const { score, feedback } = req.body;
   const userId = req.user?.id;
 
   try {
-    const submission = await prisma.submission.findUnique({
-      where: { id, userId },
+    const submission = await (prisma as any).submission.findUnique({
+      where: { id: String(id), userId },
       include: { assignment: true }
     });
 
@@ -114,8 +113,8 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
     const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
 
     await prisma.$transaction(async (tx) => {
-      await tx.submission.update({
-        where: { id },
+      await (tx as any).submission.update({
+        where: { id: String(id) },
         data: {
           score: clampedScore,
           feedback: feedback,
@@ -125,19 +124,19 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
       });
 
       // Recalculate full XP for this user automatically from all best graded submissions
-      const allUserSubmissions = await tx.submission.findMany({
+      const allUserSubmissions = await (tx as any).submission.findMany({
         where: { userId, status: "GRADED" },
         select: { assignmentId: true, score: true }
       });
 
       const bestScores: { [key: string]: number } = {};
-      allUserSubmissions.forEach(s => {
+      allUserSubmissions.forEach((s: any) => {
         if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
           bestScores[s.assignmentId] = s.score || 0;
         }
       });
 
-      const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+      const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
       const newLevel = Math.floor(newPoints / 100) + 1;
       
       let newBadge = "Bronze";
@@ -147,7 +146,7 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
       else if (newPoints >= 150) newBadge = "Gold";
       else if (newPoints >= 50) newBadge = "Silver";
 
-      await tx.user.update({
+      await (tx as any).user.update({
         where: { id: userId },
         data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
       });
@@ -159,13 +158,13 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateAssignment = async (req: AuthRequest, res: Response) => {
+export const updateAssignment = async (req: any, res: Response) => {
   const { id } = req.params;
   const { title, description, deadline, language, maxScore, rubric } = req.body;
 
   try {
     const assignment = await prisma.assignment.update({
-      where: { id },
+      where: { id: String(id) },
       data: {
         title,
         description,
@@ -181,41 +180,41 @@ export const updateAssignment = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deleteAssignment = async (req: AuthRequest, res: Response) => {
+export const deleteAssignment = async (req: any, res: Response) => {
   const { id } = req.params;
 
   try {
-    const affectedUserIds = await prisma.submission.findMany({
-      where: { assignmentId: id, status: "GRADED" },
+    const affectedUserIds = await (prisma as any).submission.findMany({
+      where: { assignmentId: String(id), status: "GRADED" },
       select: { userId: true }
-    }).then(subs => [...new Set(subs.map(s => s.userId))]);
+    }).then((subs: any[]) => [...new Set(subs.map(s => s.userId))]);
 
     await prisma.$transaction(async (tx) => {
       // 1. Delete all submissions for this assignment
-      await tx.submission.deleteMany({
-        where: { assignmentId: id }
+      await (tx as any).submission.deleteMany({
+        where: { assignmentId: String(id) }
       });
 
       // 2. Delete the assignment
       await tx.assignment.delete({
-        where: { id }
+        where: { id: String(id) }
       });
 
       // 3. Recalculate XP for all affected users automatically
       for (const userId of affectedUserIds) {
-        const userSubmissions = await tx.submission.findMany({
+        const userSubmissions = await (tx as any).submission.findMany({
           where: { userId, status: "GRADED" },
           select: { assignmentId: true, score: true }
         });
 
         const bestScores: { [key: string]: number } = {};
-        userSubmissions.forEach(s => {
+        userSubmissions.forEach((s: any) => {
           if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
             bestScores[s.assignmentId] = s.score || 0;
           }
         });
 
-        const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+        const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
         const newLevel = Math.floor(newPoints / 100) + 1;
         
         let newBadge = "Bronze";
@@ -225,7 +224,7 @@ export const deleteAssignment = async (req: AuthRequest, res: Response) => {
         else if (newPoints >= 150) newBadge = "Gold";
         else if (newPoints >= 50) newBadge = "Silver";
 
-        await tx.user.update({
+        await (tx as any).user.update({
           where: { id: userId },
           data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
         });

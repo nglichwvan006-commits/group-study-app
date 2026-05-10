@@ -8,17 +8,19 @@ export const loginMember = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user || user.role !== Role.MEMBER || !user.password) {
-      return res.status(401).json({ message: "Thông tin đăng nhập không hợp lệ" });
+    const user = await (prisma.user as any).findUnique({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Mật khẩu không đúng" });
+    // Support both Google login (no password) and local login
+    if (user.password) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
+      }
+    } else {
+      return res.status(401).json({ message: "Tài khoản này yêu cầu đăng nhập bằng Google" });
     }
 
     const payload: JWTPayload = { id: user.id, email: user.email, role: user.role as Role };
@@ -29,7 +31,7 @@ export const loginMember = async (req: Request, res: Response) => {
       data: {
         token: refreshToken,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
 
@@ -41,47 +43,39 @@ export const loginMember = async (req: Request, res: Response) => {
         name: user.name, 
         email: user.email, 
         role: user.role,
-        totalPoints: user.totalPoints,
-        level: user.level,
-        badge: user.badge
+        totalPoints: (user as any).totalPoints,
+        level: (user as any).level,
+        badge: (user as any).badge
       } 
     });
   } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Lỗi hệ thống khi đăng nhập", error: String(error) });
+    res.status(500).json({ message: "Lỗi đăng nhập" });
   }
 };
 
 export const googleCallback = async (req: Request, res: Response) => {
-  try {
-    const user = req.user as any;
-    if (!user) {
-      console.error("Google Auth: No user in request");
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
-    }
+  const user = (req as any).user;
+  const payload: JWTPayload = { id: user.id, email: user.email, role: user.role as Role };
+  
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
 
-    const payload: JWTPayload = { id: user.id, email: user.email, role: user.role as Role };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
 
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    res.redirect(`${process.env.FRONTEND_URL}/auth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-  } catch (error) {
-    console.error("Google Callback Error:", error);
-    res.status(500).send(`Lỗi đăng nhập Google: ${String(error)}`);
-  }
+  // Redirect to frontend with tokens
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  res.redirect(`${frontendUrl}/auth-success?accessToken=${accessToken}&refreshToken=${refreshToken}&user=${encodeURIComponent(JSON.stringify(user))}`);
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
-  if (!refreshToken) return res.status(400).json({ message: "Yêu cầu mã refresh token" });
+  if (!refreshToken) return res.status(401).json({ message: "No refresh token" });
 
   try {
     const storedToken = await prisma.refreshToken.findUnique({
@@ -90,32 +84,30 @@ export const refreshToken = async (req: Request, res: Response) => {
     });
 
     if (!storedToken || storedToken.expiresAt < new Date()) {
-      return res.status(401).json({ message: "Mã phiên làm việc hết hạn" });
+      return res.status(401).json({ message: "Invalid or expired refresh token" });
     }
 
-    const payload: JWTPayload = {
-      id: storedToken.user.id,
-      email: storedToken.user.email,
-      role: storedToken.user.role as Role,
-    };
-    const newAccessToken = generateAccessToken(payload);
-    res.json({ accessToken: newAccessToken });
+    const payload: JWTPayload = { id: storedToken.user.id, email: storedToken.user.email, role: storedToken.user.role as Role };
+    const accessToken = generateAccessToken(payload);
+
+    res.json({ accessToken });
   } catch (error) {
-    res.status(401).json({ message: "Mã không hợp lệ" });
+    res.status(401).json({ message: "Invalid refresh token" });
   }
 };
 
 export const getMe = async (req: any, res: Response) => {
-  if (!req.user) return res.status(401).json({ message: "Chưa xác thực" });
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { id: true, email: true, name: true, role: true, isMuted: true, totalPoints: true, level: true, badge: true },
+    const user = await (prisma.user as any).findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true, totalPoints: true, level: true, badge: true },
     });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi lấy thông tin người dùng" });
+    res.status(500).json({ message: "Error fetching user" });
   }
 };
 

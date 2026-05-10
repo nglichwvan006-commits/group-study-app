@@ -4,10 +4,10 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/rooms", authenticate, getRooms);
-router.post("/rooms", authenticate, createRoom);
-router.delete("/rooms/:id", authenticate, deleteRoom);
-router.get("/history", authenticate, getChatHistory);
-router.delete("/:id", authenticate, deleteMessage);
+router.get("/rooms", authenticate as any, getRooms as any);
+router.post("/rooms", authenticate as any, createRoom as any);
+router.delete("/rooms/:id", authenticate as any, deleteRoom as any);
+router.get("/history", authenticate as any, getChatHistory as any);
+router.delete("/:id", authenticate as any, deleteMessage as any);
 
 export default router;

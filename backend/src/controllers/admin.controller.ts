@@ -19,13 +19,13 @@ export const createMember = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await (prisma.user as any).findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
+    const user = await (prisma.user as any).create({
       data: {
         email,
         password: hashedPassword,
@@ -44,7 +44,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    await prisma.user.delete({ where: { id } });
+    await (prisma.user as any).delete({ where: { id: String(id) } });
     res.json({ message: "User deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting user" });
@@ -56,8 +56,8 @@ export const muteUser = async (req: Request, res: Response) => {
   const { isMuted } = req.body;
 
   try {
-    const user = await prisma.user.update({
-      where: { id },
+    const user = await (prisma.user as any).update({
+      where: { id: String(id) },
       data: { isMuted },
     });
     res.json(user);
@@ -70,7 +70,7 @@ export const sendWarning = async (req: Request, res: Response) => {
   const { userId, message } = req.body;
 
   try {
-    const warning = await prisma.warning.create({
+    const warning = await (prisma as any).warning.create({
       data: {
         userId,
         message,
@@ -87,7 +87,7 @@ export const sendNotification = async (req: any, res: Response) => {
   const adminId = req.user?.id;
 
   try {
-    const notification = await prisma.notification.create({
+    const notification = await (prisma as any).notification.create({
       data: {
         userId,
         senderId: adminId,
@@ -103,14 +103,14 @@ export const sendNotification = async (req: any, res: Response) => {
 
 export const syncAllUsersXP = async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
+    const users = await (prisma.user as any).findMany({
       where: { role: Role.MEMBER }
     });
 
     await prisma.$transaction(async (tx) => {
       for (const user of users) {
         // Find best score for each assignment for this user
-        const submissions = await tx.submission.findMany({
+        const submissions = await (tx as any).submission.findMany({
           where: { 
             userId: user.id,
             status: "GRADED"
@@ -120,13 +120,13 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
 
         // Group by assignment and take the max score (in case of multiple graded submissions)
         const bestScores: { [key: string]: number } = {};
-        submissions.forEach(s => {
+        submissions.forEach((s: any) => {
           if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
             bestScores[s.assignmentId] = s.score || 0;
           }
         });
 
-        const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+        const newPoints = Object.values(bestScores).reduce((a: number, b: number) => a + b, 0);
         const newLevel = Math.floor(newPoints / 100) + 1;
         
         let newBadge = "Bronze";
@@ -136,7 +136,7 @@ export const syncAllUsersXP = async (req: Request, res: Response) => {
         else if (newPoints >= 150) newBadge = "Gold";
         else if (newPoints >= 50) newBadge = "Silver";
 
-        await tx.user.update({
+        await (tx as any).user.update({
           where: { id: user.id },
           data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
         });
@@ -155,20 +155,18 @@ export const overrideScore = async (req: any, res: any) => {
   const { score, feedback } = req.body;
 
   try {
-    const submission = await prisma.submission.findUnique({
-      where: { id },
+    const submission = await (prisma as any).submission.findUnique({
+      where: { id: String(id) },
       include: { assignment: true, user: true },
     });
 
     if (!submission) return res.status(404).json({ message: "Submission not found" });
 
     const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
-    const oldScore = submission.score || 0;
-    const diff = clampedScore - oldScore;
 
     await prisma.$transaction(async (tx) => {
-      await tx.submission.update({
-        where: { id },
+      await (tx as any).submission.update({
+        where: { id: String(id) },
         data: {
           score: clampedScore,
           feedback: feedback || "Chấm điểm thủ công bởi Admin.",
@@ -178,19 +176,19 @@ export const overrideScore = async (req: any, res: any) => {
       });
 
       // Recalculate full XP for this user automatically from all best graded submissions
-      const allUserSubmissions = await tx.submission.findMany({
+      const allUserSubmissions = await (tx as any).submission.findMany({
         where: { userId: submission.userId, status: "GRADED" },
         select: { assignmentId: true, score: true }
       });
 
       const bestScores: { [key: string]: number } = {};
-      allUserSubmissions.forEach(s => {
+      allUserSubmissions.forEach((s: any) => {
         if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
           bestScores[s.assignmentId] = s.score || 0;
         }
       });
 
-      const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+      const newPoints = Object.values(bestScores).reduce((a: number, b: number) => a + b, 0);
       const newLevel = Math.floor(newPoints / 100) + 1;
       
       let newBadge = "Bronze";
@@ -200,7 +198,7 @@ export const overrideScore = async (req: any, res: any) => {
       else if (newPoints >= 150) newBadge = "Gold";
       else if (newPoints >= 50) newBadge = "Silver";
 
-      await tx.user.update({
+      await (tx as any).user.update({
         where: { id: submission.userId },
         data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
       });

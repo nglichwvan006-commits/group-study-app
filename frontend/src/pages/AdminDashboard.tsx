@@ -72,6 +72,18 @@ const AdminDashboard: React.FC = () => {
     toast.success('Đã làm mới dữ liệu!');
   };
 
+  const handleSyncXP = async () => {
+    const loadingToast = toast.loading('Đang đồng bộ lại XP toàn hệ thống...');
+    try {
+      await api.post('/admin/sync-xp');
+      toast.success('Đồng bộ XP thành công cho tất cả người dùng!', { id: loadingToast });
+      fetchUsers();
+      fetchLeaderboard();
+    } catch (error) {
+      toast.error('Lỗi khi đồng bộ XP', { id: loadingToast });
+    }
+  };
+
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     const loadingToast = toast.loading('Đang tạo tài khoản...');
@@ -264,8 +276,11 @@ const AdminDashboard: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-900/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
         
         <div className="p-4 sm:p-8 max-w-7xl mx-auto h-full flex flex-col">
-          {/* Header Refresh */}
-          <div className="flex justify-end mb-4">
+          {/* Header Actions */}
+          <div className="flex justify-end gap-3 mb-4">
+             <button onClick={handleSyncXP} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">
+                Đồng bộ lại XP
+             </button>
              <button onClick={handleRefreshData} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
                 Làm mới dữ liệu
              </button>

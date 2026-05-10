@@ -191,18 +191,49 @@ export const deleteAssignment = async (req: AuthRequest, res: Response) => {
 
   try {
     await prisma.$transaction(async (tx) => {
-      // 1. Delete all submissions for this assignment first
+      // 1. Find all graded submissions for this assignment to know how many points to subtract
+      const submissionsToDeduct = await tx.submission.findMany({
+        where: { 
+          assignmentId: id,
+          status: "GRADED",
+          score: { gt: 0 }
+        },
+        select: { userId: true, score: true }
+      });
+
+      // 2. Update each affected user's total points
+      for (const sub of submissionsToDeduct) {
+        const user = await tx.user.findUnique({ where: { id: sub.userId } });
+        if (user) {
+          const newPoints = Math.max(0, user.totalPoints - (sub.score || 0));
+          const newLevel = Math.floor(newPoints / 100) + 1;
+          
+          let newBadge = "Bronze";
+          if (newPoints >= 1000) newBadge = "Master";
+          else if (newPoints >= 500) newBadge = "Diamond";
+          else if (newPoints >= 300) newBadge = "Platinum";
+          else if (newPoints >= 150) newBadge = "Gold";
+          else if (newPoints >= 50) newBadge = "Silver";
+
+          await tx.user.update({
+            where: { id: sub.userId },
+            data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
+          });
+        }
+      }
+
+      // 3. Delete all submissions for this assignment
       await tx.submission.deleteMany({
         where: { assignmentId: id }
       });
 
-      // 2. Delete the assignment
+      // 4. Delete the assignment
       await tx.assignment.delete({
         where: { id }
       });
     });
 
-    res.json({ message: "Assignment and all associated submissions deleted successfully" });
+    res.json({ message: "Assignment deleted and user points updated successfully" });
   } catch (error) {
     console.error("Error deleting assignment:", error);
     res.status(500).json({ message: "Error deleting assignment" });

@@ -101,6 +101,55 @@ export const sendNotification = async (req: any, res: Response) => {
   }
 };
 
+export const syncAllUsersXP = async (req: Request, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: Role.MEMBER }
+    });
+
+    await prisma.$transaction(async (tx) => {
+      for (const user of users) {
+        // Find best score for each assignment for this user
+        const submissions = await tx.submission.findMany({
+          where: { 
+            userId: user.id,
+            status: "GRADED"
+          },
+          select: { assignmentId: true, score: true }
+        });
+
+        // Group by assignment and take the max score (in case of multiple graded submissions)
+        const bestScores: { [key: string]: number } = {};
+        submissions.forEach(s => {
+          if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
+            bestScores[s.assignmentId] = s.score || 0;
+          }
+        });
+
+        const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+        const newLevel = Math.floor(newPoints / 100) + 1;
+        
+        let newBadge = "Bronze";
+        if (newPoints >= 1000) newBadge = "Master";
+        else if (newPoints >= 500) newBadge = "Diamond";
+        else if (newPoints >= 300) newBadge = "Platinum";
+        else if (newPoints >= 150) newBadge = "Gold";
+        else if (newPoints >= 50) newBadge = "Silver";
+
+        await tx.user.update({
+          where: { id: user.id },
+          data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
+        });
+      }
+    });
+
+    res.json({ message: "All users' XP synchronized successfully" });
+  } catch (error) {
+    console.error("Error syncing XP:", error);
+    res.status(500).json({ message: "Error synchronizing XP" });
+  }
+};
+
 export const overrideScore = async (req: any, res: any) => {
   const { id } = req.params;
   const { score, feedback } = req.body;

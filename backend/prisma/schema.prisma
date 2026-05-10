@@ -137,14 +137,15 @@ model Submission {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  title     String
-  message   String
-  isRead    Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  senderId  String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  title        String
+  message      String
+  isRead       Boolean  @default(false)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderId     String?
+  assignmentId String?
+  createdAt    DateTime @default(now())
 }
 
 model ChatRoom {

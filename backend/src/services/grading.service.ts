@@ -133,9 +133,10 @@ ${submission.content}
 
 Nhiệm vụ của bạn:
 1. Đóng vai chuyên gia lập trình chấm điểm bài làm này.
-2. Trả về kết quả duy nhất ở định dạng JSON: {"score": number, "feedback": "string tiếng Việt"}.
+2. Trả về kết quả duy nhất ở định dạng JSON: {"score": number, "feedback": "string tiếng Việt", "suggestedCode": "string"}.
 3. Điểm số (score) phải là số nguyên từ 0 đến ${submission.assignment.maxScore}.
-4. Nhận xét (feedback) cần mang tính xây dựng, chỉ ra chỗ tốt và chỗ cần cải thiện.`;
+4. Nhận xét (feedback) cần mang tính xây dựng, chỉ ra chỗ tốt và chỗ cần cải thiện.
+5. "suggestedCode": Cung cấp mã nguồn mẫu chính xác và tối ưu nhất bằng ngôn ngữ ${submission.assignment.language} cho bài tập này.`;
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -154,7 +155,7 @@ Nhiệm vụ của bạn:
       const data = await response.json();
       const aiText = data.choices?.[0]?.message?.content || "";
       const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-      const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 0, feedback: "AI không thể phân tích bài làm." };
+      const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 0, feedback: "AI không thể phân tích bài làm.", suggestedCode: "" };
 
       const finalScore = Math.max(0, Math.min(Number(result.score) || 0, submission.assignment.maxScore));
 
@@ -169,7 +170,7 @@ Nhiệm vụ của bạn:
           },
         });
 
-        // Recalculate full XP for this user automatically
+        // ... (Recalculate full XP logic remains same)
         const allUserSubmissions = await (tx as any).submission.findMany({
           where: { userId: submission.userId, status: "GRADED" },
           select: { assignmentId: true, score: true }
@@ -197,12 +198,18 @@ Nhiệm vụ của bạn:
           data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
         });
 
-        // Add notification
+        // Enhanced Notification
+        let msg = `Bài làm mới của bạn cho "${submission.assignment.title}" đạt ${finalScore}/${submission.assignment.maxScore} điểm.\n\nNhận xét: ${result.feedback}`;
+        if (result.suggestedCode) {
+           msg += `\n\n💡 Gợi ý code mẫu:\n\`\`\`${submission.assignment.language}\n${result.suggestedCode}\n\`\`\``;
+        }
+
         await (tx as any).notification.create({
           data: {
             userId: submission.userId,
-            title: "Đã có kết quả chấm điểm AI",
-            message: `Bài làm mới của bạn đạt ${finalScore}/${submission.assignment.maxScore} điểm. Đã cập nhật vào thanh XP!`,
+            assignmentId: submission.assignmentId,
+            title: "Kết quả chấm bài AI mới 📝",
+            message: msg,
           },
         });
       });

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { User, School, Book, IdCard, GraduationCap, Calendar, Edit3, Camera, ChevronLeft } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { User, School, Book, IdCard, GraduationCap, Calendar, Edit3, Camera, ChevronLeft, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { PostItem } from './Feed';
 
@@ -15,6 +15,7 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditData] = useState<any>({ name: '', age: '', school: '', className: '', studentId: '', gender: '', bio: '', avatarUrl: '' });
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
   const isMyProfile = currentUser?.id === id;
 
@@ -92,6 +93,36 @@ const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] pb-20 dark:text-white">
+      {/* Code View Modal */}
+      <AnimatePresence>
+        {selectedSubmission && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-10">
+             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[85vh] rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                   <div>
+                      <h3 className="text-xl font-black">{selectedSubmission.assignment?.title}</h3>
+                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1">
+                        Ngôn ngữ: {selectedSubmission.assignment?.language} • Điểm: {selectedSubmission.score}/{selectedSubmission.assignment?.maxScore}
+                      </p>
+                   </div>
+                   <button onClick={() => setSelectedSubmission(null)} className="p-3 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 rounded-2xl transition-all"><X size={24}/></button>
+                </div>
+                <div className="flex-1 overflow-auto p-6 bg-slate-50/30 dark:bg-[#0d1117]">
+                   <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap break-all text-slate-800 dark:text-slate-200">
+                      <code>{selectedSubmission.content || '// Không có nội dung code.'}</code>
+                   </pre>
+                </div>
+                {selectedSubmission.feedback && (
+                  <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 border-t border-indigo-100 dark:border-indigo-800/50">
+                     <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mb-2">Nhận xét từ AI</p>
+                     <p className="text-sm italic opacity-90 leading-relaxed text-slate-700 dark:text-slate-300">"{selectedSubmission.feedback}"</p>
+                  </div>
+                )}
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sticky Header with Back Button */}
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 p-4">
          <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -181,14 +212,17 @@ const Profile: React.FC = () => {
                     {profile.submissions?.slice().sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((s: any, index: number, array: any[]) => {
                        const previousAttempts = array.slice(0, index).filter(prev => prev.assignmentId === s.assignmentId).length;
                        return (
-                          <div key={s.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center group">
+                          <div key={s.id} onClick={() => setSelectedSubmission(s)} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center group cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all hover:scale-[1.02] border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
                              <div className="flex flex-col">
-                                <p className="font-bold text-xs truncate w-32">{s.assignment?.title}</p>
+                                <p className="font-bold text-xs truncate w-32 group-hover:text-indigo-600 transition-colors">{s.assignment?.title}</p>
                                 {previousAttempts > 0 && (
                                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-tight">Làm lần {previousAttempts + 1}</span>
                                 )}
                              </div>
-                             <p className="font-black text-indigo-600 text-xs">{s.score} PTS</p>
+                             <div className="flex flex-col items-end">
+                                <p className="font-black text-indigo-600 text-xs">{s.score} PTS</p>
+                                <p className="text-[8px] font-black text-slate-400 mt-0.5 group-hover:text-indigo-500 transition-colors tracking-tighter">XEM CODE</p>
+                             </div>
                           </div>
                        );
                     })}

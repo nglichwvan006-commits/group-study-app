@@ -33,7 +33,7 @@ const MemberDashboard: React.FC = () => {
   const [activeDifficulty, setActiveDifficulty] = useState<string>('Dễ');
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
+  const [selectedLanguage, setSelectedLanguage] = useState('cpp');
   const [submissionContent, setSubmissionContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -95,6 +95,18 @@ const MemberDashboard: React.FC = () => {
     fetchNotifications();
     refreshUser();
     toast.success('Đã làm mới dữ liệu!');
+  };
+
+  const handleNotificationClick = (n: any) => {
+    if (n.assignmentId) {
+      setActiveTab('assignments');
+      const targetAssignment = assignments.find(a => a.id === n.assignmentId);
+      if (targetAssignment) {
+        setActiveDifficulty(targetAssignment.difficulty || 'Dễ');
+        setSelectedAssignment(targetAssignment);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   };
 
   const handleMarkNotificationsRead = async () => {
@@ -448,7 +460,12 @@ const MemberDashboard: React.FC = () => {
                   {notifications.map((n) => (
                     <div key={n.id} className={`p-6 rounded-[2rem] border transition-all ${!n.isRead ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-xl ring-1 ring-indigo-500/20' : 'bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800'}`}>
                       <h4 className="font-black text-lg mb-2">{n.title}</h4>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">{n.message}</p>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                      {n.assignmentId && (
+                        <button onClick={() => handleNotificationClick(n)} className="mt-4 w-full sm:w-auto px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-all border border-indigo-100 dark:border-indigo-800/50">
+                           Xem chi tiết bài tập
+                        </button>
+                      )}
                       {n.senderId && (
                         <div className="mt-4 flex gap-2">
                           <input type="text" placeholder="Phản hồi Admin..." className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500" value={replyText[n.id] || ''} onChange={(e) => setReplyText({ ...replyText, [n.id]: e.target.value })} />

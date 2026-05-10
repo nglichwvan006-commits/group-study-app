@@ -224,7 +224,7 @@ Code: ${content}`;
             </div>
             <p className="text-sm font-black text-slate-900 dark:text-white truncate">{user?.name}</p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full uppercase tracking-tighter">Cấp {user?.level || 1}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full uppercase tracking-tighter">Cấp bậc {user?.level || 1}</span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.badge || 'Bronze'}</span>
             </div>
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -409,32 +409,41 @@ Code: ${content}`;
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-end pt-10">
                         {/* Rank 2 */}
                         {leaderboard[1] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="p-8 rounded-[3rem] text-center border-4 border-slate-300 bg-white dark:bg-slate-900 order-1 md:order-none relative overflow-hidden h-[280px] flex flex-col justify-center">
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="p-8 rounded-[3rem] text-center border-4 border-slate-300 bg-white dark:bg-slate-900 order-1 md:order-none relative overflow-hidden h-[300px] flex flex-col justify-center">
                              <div className="w-14 h-14 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-xl font-black mb-4 border-4 border-white dark:border-slate-700 shadow-lg">#2</div>
                              <p className="font-black text-lg mb-1 truncate px-2">{leaderboard[1].name}</p>
-                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[1].totalPoints} <span className="text-xs opacity-50">PTS</span></p>
-                             <span className="inline-block mt-4 text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[1].badge}</span>
+                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[1].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="mt-4 flex flex-col gap-1 items-center">
+                                <span className="text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[1].badge}</span>
+                                <span className="text-[10px] font-bold text-slate-400">Cấp bậc {leaderboard[1].level}</span>
+                             </div>
                           </motion.div>
                         )}
 
                         {/* Rank 1 */}
                         {leaderboard[0] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="p-10 rounded-[3rem] text-center border-4 border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-2xl shadow-amber-500/20 order-0 md:order-none relative overflow-hidden h-[340px] flex flex-col justify-center scale-110 z-10">
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="p-10 rounded-[3rem] text-center border-4 border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-2xl shadow-amber-500/20 order-0 md:order-none relative overflow-hidden h-[360px] flex flex-col justify-center scale-110 z-10">
                              <div className="absolute top-4 left-1/2 -translate-x-1/2 text-amber-500"><Trophy size={40} fill="currentColor" className="opacity-20" /></div>
                              <div className="w-20 h-20 mx-auto rounded-full bg-amber-400 text-amber-900 flex items-center justify-center text-3xl font-black mb-4 border-4 border-white dark:border-amber-200 shadow-xl relative z-10">#1</div>
                              <p className="font-black text-xl mb-1 truncate px-2 relative z-10">{leaderboard[0].name}</p>
-                             <p className="text-amber-600 dark:text-amber-400 font-black text-3xl relative z-10">{leaderboard[0].totalPoints} <span className="text-xs opacity-50">PTS</span></p>
-                             <div className="relative z-10"><span className="inline-block mt-4 text-[10px] font-black uppercase bg-amber-400 text-amber-900 px-4 py-1.5 rounded-full shadow-md">{leaderboard[0].badge}</span></div>
+                             <p className="text-amber-600 dark:text-amber-400 font-black text-3xl relative z-10">{leaderboard[0].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="relative z-10 mt-4 flex flex-col gap-1 items-center">
+                                <span className="inline-block text-[10px] font-black uppercase bg-amber-400 text-amber-900 px-4 py-1.5 rounded-full shadow-md">{leaderboard[0].badge}</span>
+                                <span className="text-[11px] font-black text-amber-600 dark:text-amber-400">Cấp bậc {leaderboard[0].level}</span>
+                             </div>
                           </motion.div>
                         )}
 
                         {/* Rank 3 */}
                         {leaderboard[2] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="p-8 rounded-[3rem] text-center border-4 border-amber-800 bg-white dark:bg-slate-900 order-2 md:order-none relative overflow-hidden h-[260px] flex flex-col justify-center">
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="p-8 rounded-[3rem] text-center border-4 border-amber-800 bg-white dark:bg-slate-900 order-2 md:order-none relative overflow-hidden h-[280px] flex flex-col justify-center">
                              <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 dark:bg-orange-900/20 text-amber-800 flex items-center justify-center text-lg font-black mb-4 border-4 border-white dark:border-amber-900/50 shadow-lg">#3</div>
                              <p className="font-black text-lg mb-1 truncate px-2">{leaderboard[2].name}</p>
-                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[2].totalPoints} <span className="text-xs opacity-50">PTS</span></p>
-                             <span className="inline-block mt-4 text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[2].badge}</span>
+                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[2].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="mt-4 flex flex-col gap-1 items-center">
+                                <span className="inline-block text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[2].badge}</span>
+                                <span className="text-[10px] font-bold text-slate-400">Cấp bậc {leaderboard[2].level}</span>
+                             </div>
                           </motion.div>
                         )}
                      </div>
@@ -461,13 +470,13 @@ Code: ${content}`;
                                    <div className="flex items-center gap-2">
                                       <p className={`text-[10px] font-bold uppercase tracking-widest ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge}</p>
                                       <span className={`w-1 h-1 rounded-full ${u.id === user?.id ? 'bg-indigo-200' : 'bg-slate-300'}`}></span>
-                                      <p className={`text-[10px] font-bold ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Cấp {u.level || Math.floor(u.totalPoints / 100) + 1}</p>
+                                      <p className={`text-[10px] font-bold ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Cấp bậc {u.level || Math.floor(u.totalPoints / 100) + 1}</p>
                                    </div>
                                 </div>
                              </div>
                              <div className="text-right">
                                 <p className="font-black text-xl">{u.totalPoints}</p>
-                                <p className={`text-[8px] font-black uppercase tracking-tighter ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Tích lũy XP</p>
+                                <p className={`text-[8px] font-black uppercase tracking-tighter ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Tổng điểm bài tập</p>
                              </div>
                            </motion.div>
                          ))}

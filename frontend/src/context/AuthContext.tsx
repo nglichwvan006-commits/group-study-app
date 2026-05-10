@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'MEMBER';
+  avatarUrl?: string | null;
   totalPoints?: number;
   level?: number;
   badge?: string;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, ChevronRight, Plus } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, ChevronRight, RefreshCw } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -255,7 +255,7 @@ Code: ${content}`;
         <div className="md:hidden sticky top-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-40">
            <span className="font-black text-indigo-600 dark:text-indigo-400">STUDY SPACE</span>
            <div className="flex items-center gap-2">
-             <button onClick={handleRefreshData} className="p-2 text-indigo-600"><Plus size={20} className="rotate-45" /></button>
+             <button onClick={handleRefreshData} className="p-2 text-indigo-600"><RefreshCw size={20} className="hover:rotate-180 transition-transform duration-500" /></button>
              <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu size={24} /></button>
            </div>
         </div>

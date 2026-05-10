@@ -2,8 +2,12 @@ import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 
 export const getFeed = async (req: any, res: Response) => {
+  const { q } = req.query;
   try {
     const posts = await (prisma as any).post.findMany({
+      where: q ? {
+        content: { contains: String(q), mode: "insensitive" }
+      } : {},
       orderBy: { createdAt: "desc" },
       include: {
         user: {

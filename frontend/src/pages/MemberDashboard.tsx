@@ -191,28 +191,28 @@ const MemberDashboard: React.FC = () => {
                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Trang cá nhân</p>
             </Link>
             <div className="flex items-center gap-2 mt-3">
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full uppercase">Cấp {user?.level || 1}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full uppercase">Cấp bậc {user?.level || 1}</span>
               <span className="text-[10px] font-bold text-slate-400 uppercase">{user?.badge || 'Bronze'}</span>
             </div>
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                <motion.div initial={{ width: 0 }} animate={{ width: `${((user?.totalPoints || 0) % 2000) / 20}%` }} className="h-full bg-indigo-500 rounded-full" />
             </div>
-            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-2">Tổng điểm: {user?.totalPoints || 0}</p>
+            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-2">Tổng điểm bài tập: {user?.totalPoints || 0}</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-2">
-          <NavItem id="assignments" icon={BookOpen} label="Bài tập" />
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-2 text-left">
+          <NavItem id="assignments" icon={BookOpen} label="Bài tập thử thách" />
           <button onClick={() => navigate('/feed')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm">
-             <Users size={18} /> Bảng tin
+             <Users size={18} /> Bảng tin cộng đồng
           </button>
           <button onClick={() => navigate('/search')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm">
-             <Search size={18} /> Tìm kiếm
+             <Search size={18} /> Tìm kiếm thành viên
           </button>
-          <NavItem id="leaderboard" icon={Trophy} label="Xếp hạng" />
-          <NavItem id="notifications" icon={Bell} label="Thông báo" badgeCount={notifications.filter(n => !n.isRead).length} />
-          <NavItem id="resources" icon={FileText} label="Tài liệu" />
-          <NavItem id="chat" icon={MessageSquare} label="Phòng chat" />
+          <NavItem id="leaderboard" icon={Trophy} label="Bảng vàng xếp hạng" />
+          <NavItem id="notifications" icon={Bell} label="Thông báo hệ thống" badgeCount={notifications.filter(n => !n.isRead).length} />
+          <NavItem id="resources" icon={FileText} label="Thư viện tài liệu" />
+          <NavItem id="chat" icon={MessageSquare} label="Phòng chat nhóm" />
         </nav>
 
         <div className="p-4 m-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-xl space-y-1.5">
@@ -235,7 +235,7 @@ const MemberDashboard: React.FC = () => {
         </div>
 
         <div className="p-4 sm:p-10 max-w-7xl mx-auto flex flex-col h-full min-h-screen">
-          <div className="hidden md:flex justify-end mb-4">
+          <div className="hidden md:flex justify-end mb-4 text-left">
              <button onClick={handleRefreshData} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-all">
                 Làm mới dữ liệu
              </button>
@@ -245,10 +245,10 @@ const MemberDashboard: React.FC = () => {
               
               {activeTab === 'assignments' && (
                 <div className="space-y-8">
-                  <h2 className="text-3xl font-black tracking-tighter">Thử thách</h2>
+                  <h2 className="text-3xl font-black tracking-tighter text-left">Thử thách Lập trình</h2>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    <div className="lg:col-span-4 space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="lg:col-span-4 space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar text-left">
                       {assignments.map((a, index) => {
                         const mySub = mySubmissions.find(s => s.assignmentId === a.id);
                         return (
@@ -272,7 +272,7 @@ const MemberDashboard: React.FC = () => {
                     <div className="lg:col-span-8 h-full">
                       <AnimatePresence mode="wait">
                         {selectedAssignment ? (
-                          <motion.div key={selectedAssignment.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white dark:bg-slate-900 p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+                          <motion.div key={selectedAssignment.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white dark:bg-slate-900 p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 text-left">
                             <h3 className="text-2xl font-black mb-4">{selectedAssignment.title}</h3>
                             <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-sm mb-6 whitespace-pre-wrap">
                                {selectedAssignment.description}
@@ -324,20 +324,83 @@ const MemberDashboard: React.FC = () => {
 
               {activeTab === 'leaderboard' && (
                 <div className="space-y-10">
-                   <h2 className="text-4xl font-black tracking-tighter text-center">Bảng Vàng</h2>
+                   <div className="text-center">
+                      <h2 className="text-4xl sm:text-5xl font-black tracking-tighter uppercase italic">Bảng Vàng Danh Vọng</h2>
+                      <p className="text-slate-500 dark:text-slate-400 mt-2 font-bold uppercase tracking-widest text-xs">Vinh danh sự nỗ lực của các chiến binh code</p>
+                   </div>
+
+                   {/* Podium - Re-restored UI */}
+                   {leaderboard.length > 0 && (
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-end pt-10">
+                        {/* Rank 2 */}
+                        {leaderboard[1] && (
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="p-8 rounded-[3rem] text-center border-4 border-slate-300 bg-white dark:bg-slate-900 order-1 md:order-none relative overflow-hidden h-[300px] flex flex-col justify-center shadow-xl">
+                             <div className="w-14 h-14 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-xl font-black mb-4 border-4 border-white dark:border-slate-700 shadow-lg">#2</div>
+                             <p className="font-black text-lg mb-1 truncate px-2">{leaderboard[1].name}</p>
+                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[1].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="mt-4 flex flex-col gap-1 items-center">
+                                <span className="text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[1].badge}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Cấp bậc {leaderboard[1].level}</span>
+                             </div>
+                          </motion.div>
+                        )}
+
+                        {/* Rank 1 */}
+                        {leaderboard[0] && (
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="p-10 rounded-[3rem] text-center border-4 border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-2xl shadow-amber-500/20 order-0 md:order-none relative overflow-hidden h-[360px] flex flex-col justify-center scale-110 z-10">
+                             <div className="absolute top-4 left-1/2 -translate-x-1/2 text-amber-500"><Trophy size={48} fill="currentColor" className="opacity-30" /></div>
+                             <div className="w-20 h-20 mx-auto rounded-full bg-amber-400 text-amber-900 flex items-center justify-center text-3xl font-black mb-4 border-4 border-white dark:border-amber-200 shadow-xl relative z-10">#1</div>
+                             <p className="font-black text-xl mb-1 truncate px-2 relative z-10">{leaderboard[0].name}</p>
+                             <p className="text-amber-600 dark:text-amber-400 font-black text-3xl relative z-10">{leaderboard[0].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="relative z-10 mt-4 flex flex-col gap-1 items-center">
+                                <span className="inline-block text-[10px] font-black uppercase bg-amber-400 text-amber-900 px-4 py-1.5 rounded-full shadow-md">{leaderboard[0].badge}</span>
+                                <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase">Cấp bậc {leaderboard[0].level}</span>
+                             </div>
+                          </motion.div>
+                        )}
+
+                        {/* Rank 3 */}
+                        {leaderboard[2] && (
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="p-8 rounded-[3rem] text-center border-4 border-amber-800 bg-white dark:bg-slate-900 order-2 md:order-none relative overflow-hidden h-[280px] flex flex-col justify-center shadow-xl">
+                             <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 dark:bg-orange-900/20 text-amber-800 flex items-center justify-center text-lg font-black mb-4 border-4 border-white dark:border-amber-900/50 shadow-lg">#3</div>
+                             <p className="font-black text-lg mb-1 truncate px-2">{leaderboard[2].name}</p>
+                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-2xl">{leaderboard[2].totalPoints} <span className="text-[10px] opacity-50 uppercase tracking-tighter">Điểm</span></p>
+                             <div className="mt-4 flex flex-col gap-1 items-center">
+                                <span className="inline-block text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{leaderboard[2].badge}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Cấp bậc {leaderboard[2].level}</span>
+                             </div>
+                          </motion.div>
+                        )}
+                     </div>
+                   )}
+
+                   {/* Full List */}
                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 sm:p-10 max-w-4xl mx-auto">
                       <div className="space-y-4">
                          {leaderboard.map((u, index) => (
-                           <div key={u.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${u.id === user?.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800/40 border-transparent'}`}>
-                             <div className="flex items-center gap-6">
-                                <span className={`text-lg font-black w-8 ${u.id === user?.id ? 'text-white' : 'text-slate-300'}`}>#{index+1}</span>
+                           <motion.div 
+                             initial={{ x: -20, opacity: 0 }}
+                             animate={{ opacity: 1, x: 0 }}
+                             transition={{ delay: index * 0.05 }}
+                             key={u.id} 
+                             className={`flex items-center justify-between p-5 rounded-3xl border transition-all ${u.id === user?.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl translate-x-2' : 'bg-slate-50 dark:bg-slate-800/40 border-transparent hover:border-slate-200'}`}
+                           >
+                             <div className="flex items-center gap-6 text-left">
+                                <span className={`text-lg font-black w-8 ${u.id === user?.id ? 'text-white' : index < 3 ? 'text-indigo-500' : 'text-slate-300'}`}>#{index+1}</span>
                                 <div>
-                                   <p className="font-black truncate">{u.name}</p>
-                                   <p className={`text-[10px] font-bold uppercase ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge} • Cấp {u.level}</p>
+                                   <p className="font-black truncate w-32 sm:w-auto">{u.name}</p>
+                                   <div className="flex items-center gap-2">
+                                      <p className={`text-[10px] font-bold uppercase tracking-widest ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge}</p>
+                                      <span className={`w-1 h-1 rounded-full ${u.id === user?.id ? 'bg-indigo-200' : 'bg-slate-300'}`}></span>
+                                      <p className={`text-[10px] font-bold ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Cấp bậc {u.level}</p>
+                                   </div>
                                 </div>
                              </div>
-                             <p className="font-black text-xl">{u.totalPoints} PTS</p>
-                           </div>
+                             <div className="text-right">
+                                <p className="font-black text-xl">{u.totalPoints}</p>
+                                <p className={`text-[8px] font-black uppercase tracking-tighter ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>Tổng điểm bài tập</p>
+                             </div>
+                           </motion.div>
                          ))}
                       </div>
                    </div>
@@ -345,20 +408,21 @@ const MemberDashboard: React.FC = () => {
               )}
 
               {activeTab === 'notifications' && (
-                <div className="space-y-6 max-w-3xl mx-auto w-full">
-                  <h2 className="text-3xl font-black tracking-tighter">Thông báo</h2>
+                <div className="space-y-6 max-w-3xl mx-auto w-full text-left">
+                  <h2 className="text-3xl font-black tracking-tighter">Thông báo Hệ thống</h2>
                   {notifications.map((n) => (
                     <div key={n.id} className={`p-6 rounded-[2rem] border ${!n.isRead ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-lg' : 'bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800'}`}>
                       <h4 className="font-black text-lg mb-2">{n.title}</h4>
                       <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">{n.message}</p>
                       {n.senderId && (
                         <div className="mt-4 flex gap-2">
-                          <input type="text" placeholder="Phản hồi..." className="flex-1 bg-slate-50 dark:bg-slate-800 border-none px-4 py-2 rounded-xl text-xs outline-none focus:ring-1 focus:ring-indigo-500" value={replyText[n.id] || ''} onChange={(e) => setReplyText({ ...replyText, [n.id]: e.target.value })} />
-                          <button onClick={() => handleReplyNotification(n.id)} className="bg-indigo-600 text-white p-2 rounded-xl"><Send size={14} /></button>
+                          <input type="text" placeholder="Viết phản hồi..." className="flex-1 bg-slate-50 dark:bg-slate-800 border-none px-4 py-2 rounded-xl text-xs outline-none focus:ring-1 focus:ring-indigo-500" value={replyText[n.id] || ''} onChange={(e) => setReplyText({ ...replyText, [n.id]: e.target.value })} />
+                          <button onClick={() => handleReplyNotification(n.id)} className="bg-indigo-600 text-white p-2 rounded-xl transition-all hover:bg-indigo-700"><Send size={14} /></button>
                         </div>
                       )}
                     </div>
                   ))}
+                  {notifications.length === 0 && <p className="text-center py-20 text-slate-400 font-bold italic">Không có thông báo mới.</p>}
                 </div>
               )}
 

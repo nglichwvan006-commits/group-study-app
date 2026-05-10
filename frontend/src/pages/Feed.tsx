@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Trash2, MessageSquare, Heart, Image as ImageIcon, User, X } from 'lucide-react';
+import { Send, Trash2, MessageSquare, Heart, Image as ImageIcon, User, X, ChevronLeft, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ post, onDelete }) => {
   const { user: currentUser } = useAuth();
@@ -13,6 +13,7 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
   const [showComments, setShowComments] = useState(false);
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likeCount, setLikeCount] = useState(post.likeCount || 0);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   const handleToggleLike = async () => {
     try {
@@ -51,8 +52,12 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800">
       <div className="flex justify-between items-start mb-4">
         <Link to={`/profile/${post.user?.id}`} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 font-black text-sm">
-            {post.user?.name?.charAt(0) || 'U'}
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 font-black text-sm overflow-hidden">
+            {post.user?.avatarUrl ? (
+              <img src={post.user.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
+            ) : (
+              post.user?.name?.charAt(0) || 'U'
+            )}
           </div>
           <div>
             <h4 className="font-bold text-sm hover:underline text-slate-900 dark:text-white text-left">{post.user?.name || 'Unknown'}</h4>
@@ -69,10 +74,33 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
       <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-4 text-left">{post.content}</p>
       
       {post.imageUrl && (
-        <div className="mb-4 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-inner bg-slate-50 dark:bg-slate-800">
-           <img src={post.imageUrl} alt="Post content" className="w-full h-auto object-cover max-h-[500px]" />
+        <div 
+          onClick={() => setShowFullImage(true)}
+          className="mb-4 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-inner bg-slate-50 dark:bg-slate-800 cursor-zoom-in group relative"
+        >
+           <img src={post.imageUrl} alt="Post content" className="w-full h-auto object-cover max-h-[500px] transition-transform duration-500 group-hover:scale-105" />
+           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              <Maximize2 size={24} />
+           </div>
         </div>
       )}
+
+      {/* Full Image Modal */}
+      <AnimatePresence>
+        {showFullImage && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 sm:p-10 cursor-zoom-out"
+            onClick={() => setShowFullImage(false)}
+          >
+             <button className="absolute top-6 right-6 p-3 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all z-[110]"><X size={24}/></button>
+             <motion.img 
+               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+               src={post.imageUrl} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" alt="Enlarged view" 
+             />
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center gap-6">
         <button 
@@ -93,7 +121,13 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
             <div className="space-y-3">
                {comments.map((c: any) => (
                  <div key={c.id} className="flex gap-3 items-start">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-black text-indigo-600">{c.user?.name?.charAt(0)}</div>
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-black text-indigo-600 overflow-hidden">
+                      {c.user?.avatarUrl ? (
+                        <img src={c.user.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
+                      ) : (
+                        c.user?.name?.charAt(0)
+                      )}
+                    </div>
                     <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl relative text-left">
                        <p className="text-[10px] font-black text-indigo-500 mb-1">{c.user?.name}</p>
                        <p className="text-xs">{c.content}</p>
@@ -118,6 +152,7 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
 
 const Feed: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
   const [newPost, setNewPost] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -180,55 +215,67 @@ const Feed: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-20 pt-10 px-4">
-      {/* Create Post */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800">
-         <form onSubmit={handlePost} className="space-y-4">
-            <div className="flex gap-4">
-               <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0 shadow-inner font-black">
-                  {currentUser?.name?.charAt(0)}
-               </div>
-               <textarea 
-                 placeholder={`${currentUser?.name || 'Bạn'} ơi, hôm nay có gì mới?`} 
-                 className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-900 dark:text-white"
-                 rows={3}
-                 value={newPost}
-                 onChange={(e) => setNewPost(e.target.value)}
-               ></textarea>
-            </div>
-            
-            <AnimatePresence>
-               {imageUrl && (
-                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full h-64 rounded-3xl overflow-hidden border-2 border-indigo-500 bg-slate-100 shadow-inner">
-                    <img src={imageUrl} alt="Upload preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setImageUrl(null)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-all shadow-lg"><X size={16}/></button>
-                 </motion.div>
-               )}
-            </AnimatePresence>
-
-            <div className="flex justify-between items-center">
-               <label className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-500/20 transition-all text-slate-500 hover:text-indigo-600">
-                  <ImageIcon size={20} />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-               </label>
-               <button 
-                 type="submit"
-                 disabled={!newPost.trim() || isPosting}
-                 className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-               >
-                  {isPosting ? 'ĐANG ĐĂNG...' : 'ĐĂNG BÀI'}
-               </button>
-            </div>
-         </form>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] pb-20">
+      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 p-4">
+         <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all">
+               <ChevronLeft size={20} /> QUAY LẠI
+            </button>
+            <h2 className="font-black tracking-tighter text-lg uppercase">Bảng tin cộng đồng</h2>
+            <div className="w-20"></div>
+         </div>
       </div>
 
-      <div className="space-y-8">
-         {posts.map((p) => (
-           <PostItem key={p.id} post={p} onDelete={handleDeletePost} />
-         ))}
-         {posts.length === 0 && (
-           <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[3rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">Bảng tin đang trống.</div>
-         )}
+      <div className="max-w-2xl mx-auto space-y-8 mt-8 px-4">
+        {/* Create Post */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800">
+           <form onSubmit={handlePost} className="space-y-4">
+              <div className="flex gap-4">
+                 <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0 shadow-inner font-black overflow-hidden">
+                    {currentUser?.avatarUrl ? <img src={currentUser.avatarUrl} className="w-full h-full object-cover" /> : currentUser?.name?.charAt(0)}
+                 </div>
+                 <textarea 
+                   placeholder={`${currentUser?.name || 'Bạn'} ơi, hôm nay có gì mới?`} 
+                   className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-900 dark:text-white"
+                   rows={3}
+                   value={newPost}
+                   onChange={(e) => setNewPost(e.target.value)}
+                 ></textarea>
+              </div>
+              
+              <AnimatePresence>
+                 {imageUrl && (
+                   <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full h-64 rounded-3xl overflow-hidden border-2 border-indigo-500 bg-slate-100 shadow-inner">
+                      <img src={imageUrl} alt="Upload preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setImageUrl(null)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-all shadow-lg"><X size={16}/></button>
+                   </motion.div>
+                 )}
+              </AnimatePresence>
+
+              <div className="flex justify-between items-center">
+                 <label className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-500/20 transition-all text-slate-500 hover:text-indigo-600">
+                    <ImageIcon size={20} />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                 </label>
+                 <button 
+                   type="submit"
+                   disabled={!newPost.trim() || isPosting}
+                   className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                 >
+                    {isPosting ? 'ĐANG ĐĂNG...' : 'ĐĂNG BÀI'}
+                 </button>
+              </div>
+           </form>
+        </div>
+
+        <div className="space-y-8">
+           {posts.map((p) => (
+             <PostItem key={p.id} post={p} onDelete={handleDeletePost} />
+           ))}
+           {posts.length === 0 && (
+             <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[3rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">Bảng tin đang trống.</div>
+           )}
+        </div>
       </div>
     </div>
   );

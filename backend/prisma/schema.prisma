@@ -42,6 +42,7 @@ model User {
   createdRooms  ChatRoom[]     @relation("CreatedRooms")
   joinedRooms   ChatRoom[]     @relation("RoomParticipants")
   posts         Post[]
+  comments      Comment[]
 }
 
 model Post {

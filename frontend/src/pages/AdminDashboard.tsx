@@ -32,6 +32,8 @@ const AdminDashboard: React.FC = () => {
   const [showAddAssignment, setShowAddAssignment] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', maxScore: 100 });
+  const [isAISmartMode, setIsAISmartMode] = useState(false);
+  const [rawAssignmentText, setRawAssignmentText] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -175,21 +177,32 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const loadingToast = toast.loading(editingAssignment ? 'Đang cập nhật bài tập...' : 'Đang gửi bài tập cho AI phân loại...');
+    const loadingToast = toast.loading(
+      isAISmartMode 
+        ? 'AI đang phân tích và tạo bài tập...' 
+        : (editingAssignment ? 'Đang cập nhật bài tập...' : 'Đang gửi bài tập cho AI phân loại...')
+    );
+
     try {
-      if (editingAssignment) {
-        await api.patch(`/assignments/${editingAssignment.id}`, newAssignment);
-        toast.success('Đã cập nhật bài tập!', { id: loadingToast });
+      if (isAISmartMode) {
+        await api.post('/assignments/bulk-ai', { rawText: rawAssignmentText });
+        toast.success('Đã tạo hàng loạt bài tập thành công!', { id: loadingToast });
+        setRawAssignmentText('');
       } else {
-        await api.post('/assignments', newAssignment);
-        toast.success('Bài tập đã được AI phân loại và đăng!', { id: loadingToast });
+        if (editingAssignment) {
+          await api.patch(`/assignments/${editingAssignment.id}`, newAssignment);
+          toast.success('Đã cập nhật bài tập!', { id: loadingToast });
+        } else {
+          await api.post('/assignments', newAssignment);
+          toast.success('Bài tập đã được AI phân loại và đăng!', { id: loadingToast });
+        }
+        setNewAssignment({ title: '', description: '', deadline: '', maxScore: 100 });
       }
       fetchAssignments();
       setShowAddAssignment(false);
       setEditingAssignment(null);
-      setNewAssignment({ title: '', description: '', deadline: '', maxScore: 100 });
-    } catch (error) {
-      toast.error('Lỗi thao tác bài tập', { id: loadingToast });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi thao tác bài tập', { id: loadingToast });
     }
   };
 
@@ -366,27 +379,57 @@ const AdminDashboard: React.FC = () => {
                   <AnimatePresence>
                     {showAddAssignment && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 mb-6 overflow-hidden">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Sparkles className="text-indigo-500"/> Tạo thử thách mới (AI sẽ tự phân loại cấp độ)</h3>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                           <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="text-indigo-500"/> {editingAssignment ? 'Cập nhật bài tập' : 'Tạo thử thách mới'}</h3>
+                           {!editingAssignment && (
+                             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                               <button onClick={() => setIsAISmartMode(false)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAISmartMode ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}>THỦ CÔNG</button>
+                               <button onClick={() => setIsAISmartMode(true)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isAISmartMode ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-500'}`}>AI THÔNG MINH</button>
+                             </div>
+                           )}
+                        </div>
+
                         <form onSubmit={handleCreateAssignment} className="space-y-5">
-                           <div>
-                              <label className="block text-xs font-black text-slate-400 uppercase mb-2">Tiêu đề bài tập</label>
-                              <input type="text" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.title} onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})} />
+                           {isAISmartMode && !editingAssignment ? (
+                             <div className="space-y-4">
+                                <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
+                                   <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium leading-relaxed">
+                                      ✨ <strong>Mẹo:</strong> Bạn có thể dán một danh sách nội dung bài tập, giáo trình hoặc mô tả thô. AI sẽ tự động tách thành từng bài tập riêng biệt, phân loại độ khó và tính điểm (Dễ: 50, TB: 70, Khá: 100, Khó: 150, Master: 500).
+                                   </p>
+                                </div>
+                                <div>
+                                   <label className="block text-xs font-black text-slate-400 uppercase mb-2">Dán nội dung bài tập tại đây</label>
+                                   <textarea required placeholder="Ví dụ: 1. Viết hàm tính tổng 2 số. 2. Tạo thuật toán sắp xếp mảng..." className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium" rows={10} value={rawAssignmentText} onChange={(e) => setRawAssignmentText(e.target.value)}></textarea>
+                                </div>
+                             </div>
+                           ) : (
+                             <>
+                               <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">Tiêu đề bài tập</label>
+                                  <input type="text" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.title} onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})} />
+                               </div>
+                               <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">Mô tả nội dung & Yêu cầu</label>
+                                  <textarea required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium" rows={5} value={newAssignment.description} onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}></textarea>
+                               </div>
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Điểm tối đa</label>
+                                     <input type="number" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.maxScore} onChange={(e) => setNewAssignment({...newAssignment, maxScore: parseInt(e.target.value)})} />
+                                  </div>
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Hạn nộp</label>
+                                     <input type="datetime-local" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.deadline} onChange={(e) => setNewAssignment({...newAssignment, deadline: e.target.value})} />
+                                  </div>
+                               </div>
+                             </>
+                           )}
+                           <div className="flex justify-end gap-3 pt-4">
+                             <button type="button" onClick={() => { setShowAddAssignment(false); setEditingAssignment(null); }} className="px-8 py-3 text-slate-500 font-bold">HỦY</button>
+                             <button type="submit" className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
+                               {isAISmartMode && !editingAssignment ? 'XÁC NHẬN TẠO VỚI AI' : (editingAssignment ? 'CẬP NHẬT' : 'ĐĂNG BÀI TẬP')}
+                             </button>
                            </div>
-                           <div>
-                              <label className="block text-xs font-black text-slate-400 uppercase mb-2">Mô tả nội dung & Yêu cầu</label>
-                              <textarea required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium" rows={5} value={newAssignment.description} onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}></textarea>
-                           </div>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                 <label className="block text-xs font-black text-slate-400 uppercase mb-2">Điểm tối đa</label>
-                                 <input type="number" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.maxScore} onChange={(e) => setNewAssignment({...newAssignment, maxScore: parseInt(e.target.value)})} />
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-black text-slate-400 uppercase mb-2">Hạn nộp</label>
-                                 <input type="datetime-local" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.deadline} onChange={(e) => setNewAssignment({...newAssignment, deadline: e.target.value})} />
-                              </div>
-                           </div>
-                           <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setShowAddAssignment(false)} className="px-8 py-3 text-slate-500 font-bold">HỦY</button><button type="submit" className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">ĐĂNG BÀI TẬP</button></div>
                         </form>
                       </motion.div>
                     )}

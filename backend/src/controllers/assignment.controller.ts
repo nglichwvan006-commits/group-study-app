@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { gradeSubmissionAsync, classifyDifficultyAsync } from "../services/grading.service";
+import { gradeSubmissionAsync, classifyDifficultyAsync, bulkGenerateAssignmentsAsync } from "../services/grading.service";
 
 export const getAssignments = async (req: Request, res: Response) => {
   try {
@@ -40,6 +40,64 @@ export const createAssignment = async (req: any, res: Response) => {
     res.status(201).json(assignment);
   } catch (error) {
     res.status(500).json({ message: "Error creating assignment" });
+  }
+};
+
+export const bulkCreateAssignmentsAI = async (req: any, res: Response) => {
+  const { rawText } = req.body;
+  const creatorId = req.user?.id;
+
+  if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
+  if (!rawText) return res.status(400).json({ message: "Raw text is required" });
+
+  try {
+    // 1. Use AI to parse the text into assignments
+    const aiAssignments = await bulkGenerateAssignmentsAsync(rawText);
+
+    if (!aiAssignments || aiAssignments.length === 0) {
+      return res.status(422).json({ message: "AI could not parse any assignments from the provided text." });
+    }
+
+    const pointsMap: { [key: string]: number } = {
+      "Dễ": 50,
+      "Trung bình": 70,
+      "Khá": 100,
+      "Khó": 150,
+      "Master": 500
+    };
+
+    // 2. Create assignments in database
+    const createdAssignments = await Promise.all(
+      aiAssignments.map((a: any) => {
+        const difficulty = a.difficulty || "Trung bình";
+        const maxScore = pointsMap[difficulty] || 70;
+        // Default deadline: 1 year from now as per "không cần nhập hạn nộp"
+        const deadline = new Date();
+        deadline.setFullYear(deadline.getFullYear() + 1);
+
+        return prisma.assignment.create({
+          data: {
+            title: a.title,
+            description: a.description,
+            difficulty: difficulty,
+            maxScore: maxScore,
+            deadline: deadline,
+            creatorId: creatorId,
+            language: "auto",
+            rubric: "Tự động chấm điểm bởi AI dựa trên độ chính xác và chất lượng mã nguồn."
+          }
+        });
+      })
+    );
+
+    res.status(201).json({
+      message: `Successfully created ${createdAssignments.length} assignments using AI.`,
+      count: createdAssignments.length,
+      assignments: createdAssignments
+    });
+  } catch (error) {
+    console.error("[Bulk AI Controller] Error:", error);
+    res.status(500).json({ message: "Error processing assignments with AI" });
   }
 };
 

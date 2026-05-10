@@ -12,11 +12,11 @@ Mô tả: ${description}
 
 Trả về DUY NHẤT một trong các từ sau: "Dễ", "Trung bình", "Khá", "Khó", "Master".
 Tiêu chí:
-- Dễ: Bài tập cơ bản, in chuỗi, tính toán đơn giản.
-- Trung bình: Có sử dụng vòng lặp, mảng cơ bản.
-- Khá: Sử dụng cấu trúc dữ liệu, thuật toán sắp xếp cơ bản.
-- Khó: Thuật toán phức tạp, đệ quy, xử lý file hoặc API.
-- Master: Thử thách cực khó, tối ưu thuật toán, kiến trúc hệ thống.`;
+- Dễ: Bài tập cơ bản, in chuỗi, tính toán đơn giản. (50 điểm)
+- Trung bình: Có sử dụng vòng lặp, mảng cơ bản. (70 điểm)
+- Khá: Sử dụng cấu trúc dữ liệu, thuật toán sắp xếp cơ bản. (100 điểm)
+- Khó: Thuật toán phức tạp, đệ quy, xử lý file hoặc API. (150 điểm)
+- Master: Thử thách cực khó, tối ưu thuật toán, kiến trúc hệ thống. (500 điểm)`;
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -37,6 +37,59 @@ Tiêu chí:
       return match || "Trung bình";
     } catch (error) {
       return "Trung bình";
+    }
+  }
+
+  public static async bulkGenerateAssignments(rawText: string): Promise<any[]> {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) return [];
+
+    try {
+      const prompt = `Bạn là một chuyên gia thiết kế bài tập lập trình. Hãy phân tích đoạn văn bản dưới đây và tách nó thành danh sách các bài tập lập trình cụ thể.
+Văn bản:
+---
+${rawText}
+---
+
+Yêu cầu:
+1. Tách thành các bài tập riêng lẻ.
+2. Với mỗi bài tập, xác định: Tiêu đề, Mô tả chi tiết yêu cầu, và Độ khó.
+3. Độ khó phải thuộc một trong các giá trị: "Dễ", "Trung bình", "Khá", "Khó", "Master".
+4. Trả về kết quả DUY NHẤT ở định dạng JSON là một mảng các đối tượng có cấu trúc:
+[
+  {
+    "title": "Tiêu đề bài tập",
+    "description": "Mô tả chi tiết và yêu cầu bài tập",
+    "difficulty": "Dễ/Trung bình/Khá/Khó/Master"
+  }
+]
+
+Đảm bảo JSON hợp lệ và không có văn bản thừa bên ngoài.`;
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://group-study-app.vercel.app",
+          "X-Title": "Group Study App"
+        },
+        body: JSON.stringify({
+          model: "deepseek/deepseek-chat",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const aiText = data.choices?.[0]?.message?.content || "[]";
+      const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const assignments = JSON.parse(jsonMatch[0]);
+      return assignments;
+    } catch (error) {
+      console.error("[AI Bulk] Error:", error);
+      return [];
     }
   }
 
@@ -167,3 +220,4 @@ Nhiệm vụ của bạn:
 
 export const gradeSubmissionAsync = (id: string) => GeminiCliGradingService.gradeSubmission(id);
 export const classifyDifficultyAsync = (title: string, desc: string) => GeminiCliGradingService.classifyDifficulty(title, desc);
+export const bulkGenerateAssignmentsAsync = (text: string) => GeminiCliGradingService.bulkGenerateAssignments(text);

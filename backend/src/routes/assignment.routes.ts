@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAssignments, createAssignment, submitAssignment, getSubmissions, getMySubmissions, submitAIResult, updateAssignment, deleteAssignment } from "../controllers/assignment.controller";
+import { getAssignments, createAssignment, submitAssignment, getSubmissions, getMySubmissions, submitAIResult, updateAssignment, deleteAssignment, bulkCreateAssignmentsAI } from "../controllers/assignment.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
 import { Role } from "../types/auth";
 
@@ -10,6 +10,7 @@ router.use(authenticate as any);
 router.get("/", getAssignments as any);
 router.get("/my-submissions", getMySubmissions as any);
 router.post("/", authorize([Role.ADMIN]) as any, createAssignment as any);
+router.post("/bulk-ai", authorize([Role.ADMIN]) as any, bulkCreateAssignmentsAI as any);
 router.patch("/:id", authorize([Role.ADMIN]) as any, updateAssignment as any);
 router.delete("/:id", authorize([Role.ADMIN]) as any, deleteAssignment as any);
 router.post("/submit", authorize([Role.MEMBER]) as any, submitAssignment as any);

@@ -22,6 +22,14 @@ model User {
   level         Int            @default(1)
   badge         String         @default("Bronze")
 
+  // Profile fields
+  age           Int?
+  school        String?
+  className     String?
+  studentId     String?
+  gender        String?
+  bio           String?
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   assignments   Assignment[]   @relation("CreatedAssignments")
@@ -33,6 +41,15 @@ model User {
   notifications Notification[]
   createdRooms  ChatRoom[]     @relation("CreatedRooms")
   joinedRooms   ChatRoom[]     @relation("RoomParticipants")
+  posts         Post[]
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model Resource {

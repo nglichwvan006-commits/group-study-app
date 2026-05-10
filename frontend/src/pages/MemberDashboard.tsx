@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, ChevronRight, RefreshCw } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, ChevronRight, RefreshCw, Search, Users, UserCircle } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
+import { useNavigate, Link } from 'react-router-dom';
 
 const MemberDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'assignments' | 'chat' | 'resources' | 'leaderboard' | 'notifications'>('assignments');
   const [assignments, setAssignments] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
@@ -219,11 +221,14 @@ Code: ${content}`;
           </h1>
           
           <div className="mt-8 p-4 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl shadow-indigo-500/5">
-            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${getBadgeColor(user?.badge || 'Bronze')} flex items-center justify-center text-white mb-3 shadow-lg`}>
-              <Trophy size={24} />
-            </div>
-            <p className="text-sm font-black text-slate-900 dark:text-white truncate">{user?.name}</p>
-            <div className="flex items-center gap-2 mt-1">
+            <Link to={`/profile/${user?.id}`} className="block group">
+               <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${getBadgeColor(user?.badge || 'Bronze')} flex items-center justify-center text-white mb-3 shadow-lg group-hover:scale-110 transition-all`}>
+                  <Trophy size={24} />
+               </div>
+               <p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">{user?.name}</p>
+               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 hover:underline">Xem trang cá nhân</p>
+            </Link>
+            <div className="flex items-center gap-2 mt-3">
               <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full uppercase tracking-tighter">Cấp bậc {user?.level || 1}</span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.badge || 'Bronze'}</span>
             </div>
@@ -237,6 +242,12 @@ Code: ${content}`;
 
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-2">
           <NavItem id="assignments" icon={BookOpen} label="Bài tập thử thách" />
+          <button onClick={() => navigate('/feed')} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium transition-all">
+             <Users size={20} /> Bảng tin cộng đồng
+          </button>
+          <button onClick={() => navigate('/search')} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium transition-all">
+             <Search size={20} /> Tìm kiếm bạn bè
+          </button>
           <NavItem id="leaderboard" icon={Trophy} label="Bảng vàng xếp hạng" />
           <NavItem id="notifications" icon={Bell} label="Thông báo hệ thống" badgeCount={notifications.filter(n => !n.isRead).length} />
           <NavItem id="resources" icon={FileText} label="Thư viện tài liệu" />

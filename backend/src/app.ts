@@ -8,6 +8,8 @@ import assignmentRoutes from "./routes/assignment.routes";
 import chatRoutes from "./routes/chat.routes";
 import resourceRoutes from "./routes/resource.routes";
 import rankingRoutes from "./routes/ranking.routes";
+import profileRoutes from "./routes/profile.routes";
+import postRoutes from "./routes/post.routes";
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/ranking", rankingRoutes);
+app.use("/api/profiles", profileRoutes);
+app.use("/api/posts", postRoutes);
 
 app.get("/", (req, res) => {
   res.send("Group Study API is running");

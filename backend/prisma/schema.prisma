@@ -107,6 +107,7 @@ model Assignment {
   // Coding features
   language    String       @default("javascript")
   maxScore    Int          @default(100)
+  difficulty  String?      @default("Trung bình")
   rubric      String       @default("General correctness and code quality.")
 
   creatorId   String

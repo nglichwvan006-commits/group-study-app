@@ -1,6 +1,45 @@
 import prisma from "../utils/prisma";
 
 export class GeminiCliGradingService {
+  public static async classifyDifficulty(title: string, description: string): Promise<string> {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) return "Trung bình";
+
+    try {
+      const prompt = `Phân loại độ khó cho bài tập lập trình sau:
+Tiêu đề: "${title}"
+Mô tả: ${description}
+
+Trả về DUY NHẤT một trong các từ sau: "Dễ", "Trung bình", "Khá", "Khó", "Master".
+Tiêu chí:
+- Dễ: Bài tập cơ bản, in chuỗi, tính toán đơn giản.
+- Trung bình: Có sử dụng vòng lặp, mảng cơ bản.
+- Khá: Sử dụng cấu trúc dữ liệu, thuật toán sắp xếp cơ bản.
+- Khó: Thuật toán phức tạp, đệ quy, xử lý file hoặc API.
+- Master: Thử thách cực khó, tối ưu thuật toán, kiến trúc hệ thống.`;
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "deepseek/deepseek-chat",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || "Trung bình";
+      const difficulties = ["Dễ", "Trung bình", "Khá", "Khó", "Master"];
+      const match = difficulties.find(d => text.includes(d));
+      return match || "Trung bình";
+    } catch (error) {
+      return "Trung bình";
+    }
+  }
+
   public static async gradeSubmission(submissionId: string) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -91,14 +130,14 @@ Nhiệm vụ của bạn:
         });
 
         const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
-        const newLevel = Math.floor(newPoints / 100) + 1;
+        const newLevel = Math.floor(newPoints / 2000) + 1;
         
         let newBadge = "Bronze";
-        if (newPoints >= 1000) newBadge = "Master";
-        else if (newPoints >= 500) newBadge = "Diamond";
-        else if (newPoints >= 300) newBadge = "Platinum";
-        else if (newPoints >= 150) newBadge = "Gold";
-        else if (newPoints >= 50) newBadge = "Silver";
+        if (newPoints >= 10000) newBadge = "Master";
+        else if (newPoints >= 5000) newBadge = "Diamond";
+        else if (newPoints >= 3000) newBadge = "Platinum";
+        else if (newPoints >= 1500) newBadge = "Gold";
+        else if (newPoints >= 500) newBadge = "Silver";
 
         await (tx as any).user.update({
           where: { id: submission.userId },
@@ -127,3 +166,4 @@ Nhiệm vụ của bạn:
 }
 
 export const gradeSubmissionAsync = (id: string) => GeminiCliGradingService.gradeSubmission(id);
+export const classifyDifficultyAsync = (title: string, desc: string) => GeminiCliGradingService.classifyDifficulty(title, desc);

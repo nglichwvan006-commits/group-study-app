@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { gradeSubmissionAsync } from "../services/grading.service";
+import { gradeSubmissionAsync, classifyDifficultyAsync } from "../services/grading.service";
 
 export const getAssignments = async (req: Request, res: Response) => {
   try {
     const assignments = await prisma.assignment.findMany({
-      orderBy: { deadline: "asc" },
+      orderBy: { createdAt: "desc" },
       include: { creator: { select: { name: true } } },
     });
     res.json(assignments);
@@ -16,20 +16,24 @@ export const getAssignments = async (req: Request, res: Response) => {
 };
 
 export const createAssignment = async (req: any, res: Response) => {
-  const { title, description, deadline, language, maxScore, rubric } = req.body;
+  const { title, description, deadline, maxScore } = req.body;
   const creatorId = req.user?.id;
 
   if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
+    // 1. Ask AI to classify difficulty
+    const difficulty = await classifyDifficultyAsync(title, description);
+
+    // 2. Create assignment
     const assignment = await prisma.assignment.create({
       data: {
         title,
         description,
         deadline: new Date(deadline),
-        language: language || "javascript",
+        language: "auto", // Default or detect automatically later
         maxScore: maxScore ? parseInt(maxScore) : 100,
-        rubric: rubric || "General correctness",
+        difficulty,
         creatorId,
       },
     });
@@ -123,7 +127,7 @@ export const submitAIResult = async (req: any, res: Response) => {
         },
       });
 
-      // Recalculate full XP for this user automatically from all best graded submissions
+      // Recalculate full XP for this user automatically
       const allUserSubmissions = await (tx as any).submission.findMany({
         where: { userId, status: "GRADED" },
         select: { assignmentId: true, score: true }
@@ -160,7 +164,7 @@ export const submitAIResult = async (req: any, res: Response) => {
 
 export const updateAssignment = async (req: any, res: Response) => {
   const { id } = req.params;
-  const { title, description, deadline, language, maxScore, rubric } = req.body;
+  const { title, description, deadline, maxScore } = req.body;
 
   try {
     const assignment = await prisma.assignment.update({
@@ -169,9 +173,7 @@ export const updateAssignment = async (req: any, res: Response) => {
         title,
         description,
         deadline: deadline ? new Date(deadline) : undefined,
-        language,
         maxScore: maxScore ? parseInt(maxScore) : undefined,
-        rubric,
       },
     });
     res.json(assignment);
@@ -215,14 +217,14 @@ export const deleteAssignment = async (req: any, res: Response) => {
         });
 
         const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
-        const newLevel = Math.floor(newPoints / 100) + 1;
+        const newLevel = Math.floor(newPoints / 2000) + 1;
         
         let newBadge = "Bronze";
-        if (newPoints >= 1000) newBadge = "Master";
-        else if (newPoints >= 500) newBadge = "Diamond";
-        else if (newPoints >= 300) newBadge = "Platinum";
-        else if (newPoints >= 150) newBadge = "Gold";
-        else if (newPoints >= 50) newBadge = "Silver";
+        if (newPoints >= 10000) newBadge = "Master";
+        else if (newPoints >= 5000) newBadge = "Diamond";
+        else if (newPoints >= 3000) newBadge = "Platinum";
+        else if (newPoints >= 1500) newBadge = "Gold";
+        else if (newPoints >= 500) newBadge = "Silver";
 
         await (tx as any).user.update({
           where: { id: userId },

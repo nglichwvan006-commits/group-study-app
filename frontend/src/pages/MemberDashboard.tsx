@@ -376,27 +376,39 @@ const MemberDashboard: React.FC = () => {
                    {leaderboard.length > 0 && (
                      <div className="flex flex-col md:flex-row items-center md:items-end justify-center gap-6 pt-10 px-4">
                         {leaderboard[1] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="w-full md:w-64 p-8 rounded-[3rem] text-center border-4 border-slate-300 bg-white dark:bg-slate-900 order-2 md:order-1 h-[260px] flex flex-col justify-center shadow-xl">
-                             <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-lg font-black mb-3 border-4 border-white dark:border-slate-700 shadow-lg">#2</div>
-                             <p className="font-black text-base mb-1 truncate px-2">{leaderboard[1].name}</p>
-                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[1].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
-                             <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[1].badge} • Cấp {leaderboard[1].level}</p>
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="w-full md:w-64 p-8 rounded-[3rem] text-center border-4 border-slate-300 bg-white dark:bg-slate-900 order-2 md:order-1 h-[260px] flex flex-col justify-center shadow-xl group cursor-pointer">
+                             <Link to={`/profile/${leaderboard[1].id}`} className="block">
+                                <div className="w-16 h-16 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-lg font-black mb-3 border-4 border-white dark:border-slate-700 shadow-lg overflow-hidden group-hover:scale-110 transition-transform">
+                                   {leaderboard[1].avatarUrl ? <img src={leaderboard[1].avatarUrl} className="w-full h-full object-cover" /> : '#2'}
+                                </div>
+                                <p className="font-black text-base mb-1 truncate px-2 group-hover:text-indigo-600 transition-colors">{leaderboard[1].name}</p>
+                                <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[1].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[1].badge} • Cấp {leaderboard[1].level}</p>
+                             </Link>
                           </motion.div>
                         )}
                         {leaderboard[0] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="w-full md:w-72 p-10 rounded-[3rem] text-center border-4 border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-2xl shadow-amber-500/20 order-1 md:order-2 h-[320px] flex flex-col justify-center relative z-10 scale-105">
-                             <div className="w-16 h-16 mx-auto rounded-full bg-amber-400 text-amber-900 flex items-center justify-center text-2xl font-black mb-3 border-4 border-white dark:border-amber-200 shadow-xl relative z-10">#1</div>
-                             <p className="font-black text-lg mb-1 truncate px-2 relative z-10">{leaderboard[0].name}</p>
-                             <p className="text-amber-600 dark:text-amber-400 font-black text-2xl relative z-10">{leaderboard[0].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
-                             <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mt-2 relative z-10">{leaderboard[0].badge} • Cấp {leaderboard[0].level}</p>
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="w-full md:w-72 p-10 rounded-[3rem] text-center border-4 border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-2xl shadow-amber-500/20 order-1 md:order-2 h-[320px] flex flex-col justify-center relative z-10 scale-105 group cursor-pointer">
+                             <Link to={`/profile/${leaderboard[0].id}`} className="block">
+                                <div className="w-20 h-20 mx-auto rounded-full bg-amber-400 text-amber-900 flex items-center justify-center text-2xl font-black mb-3 border-4 border-white dark:border-amber-200 shadow-xl relative z-10 overflow-hidden group-hover:scale-110 transition-transform">
+                                   {leaderboard[0].avatarUrl ? <img src={leaderboard[0].avatarUrl} className="w-full h-full object-cover" /> : '#1'}
+                                </div>
+                                <p className="font-black text-lg mb-1 truncate px-2 relative z-10 group-hover:text-amber-600 transition-colors">{leaderboard[0].name}</p>
+                                <p className="text-amber-600 dark:text-amber-400 font-black text-2xl relative z-10">{leaderboard[0].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
+                                <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mt-2 relative z-10">{leaderboard[0].badge} • Cấp {leaderboard[0].level}</p>
+                             </Link>
                           </motion.div>
                         )}
                         {leaderboard[2] && (
-                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="w-full md:w-60 p-8 rounded-[3rem] text-center border-4 border-amber-800 bg-white dark:bg-slate-900 order-3 md:order-3 h-[240px] flex flex-col justify-center shadow-xl">
-                             <div className="w-10 h-10 mx-auto rounded-full bg-orange-100 dark:bg-orange-900/20 text-amber-800 flex items-center justify-center text-base font-black mb-3 border-4 border-white dark:border-amber-900/50 shadow-lg">#3</div>
-                             <p className="font-black text-base mb-1 truncate px-2">{leaderboard[2].name}</p>
-                             <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[2].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
-                             <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[2].badge} • Cấp {leaderboard[2].level}</p>
+                          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="w-full md:w-60 p-8 rounded-[3rem] text-center border-4 border-amber-800 bg-white dark:bg-slate-900 order-3 md:order-3 h-[240px] flex flex-col justify-center shadow-xl group cursor-pointer">
+                             <Link to={`/profile/${leaderboard[2].id}`} className="block">
+                                <div className="w-14 h-14 mx-auto rounded-full bg-orange-100 dark:bg-orange-900/20 text-amber-800 flex items-center justify-center text-base font-black mb-3 border-4 border-white dark:border-amber-900/50 shadow-lg overflow-hidden group-hover:scale-110 transition-transform">
+                                   {leaderboard[2].avatarUrl ? <img src={leaderboard[2].avatarUrl} className="w-full h-full object-cover" /> : '#3'}
+                                </div>
+                                <p className="font-black text-base mb-1 truncate px-2 group-hover:text-orange-700 transition-colors">{leaderboard[2].name}</p>
+                                <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[2].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[2].badge} • Cấp {leaderboard[2].level}</p>
+                             </Link>
                           </motion.div>
                         )}
                      </div>
@@ -404,16 +416,19 @@ const MemberDashboard: React.FC = () => {
                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 sm:p-10 max-w-4xl mx-auto">
                       <div className="space-y-4">
                          {leaderboard.map((u, index) => (
-                           <div key={u.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${u.id === user?.id ? 'bg-indigo-600 text-white shadow-lg translate-x-2' : 'bg-slate-50 dark:bg-slate-800/40 border-transparent text-left'}`}>
+                           <Link key={u.id} to={`/profile/${u.id}`} className={`flex items-center justify-between p-5 rounded-2xl border transition-all group ${u.id === user?.id ? 'bg-indigo-600 text-white shadow-lg translate-x-2' : 'bg-slate-50 dark:bg-slate-800/40 border-transparent text-left hover:border-indigo-300 dark:hover:border-indigo-700'}`}>
                              <div className="flex items-center gap-6">
                                 <span className={`text-lg font-black w-8 ${u.id === user?.id ? 'text-white' : index < 3 ? 'text-indigo-500' : 'text-slate-300'}`}>#{index+1}</span>
+                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center font-black text-indigo-600 overflow-hidden shadow-sm">
+                                   {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                                </div>
                                 <div className="text-left">
-                                   <p className="font-black truncate w-32 sm:w-auto">{u.name}</p>
+                                   <p className={`font-black truncate w-32 sm:w-auto group-hover:text-indigo-500 ${u.id === user?.id ? 'group-hover:text-white' : ''}`}>{u.name}</p>
                                    <p className={`text-[10px] font-bold uppercase ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge} • Cấp {u.level}</p>
                                 </div>
                              </div>
                              <p className="font-black text-xl">{u.totalPoints}</p>
-                           </div>
+                           </Link>
                          ))}
                       </div>
                    </div>

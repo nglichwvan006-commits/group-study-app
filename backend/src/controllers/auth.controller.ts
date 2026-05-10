@@ -23,6 +23,21 @@ export const registerMember = async (req: Request, res: Response) => {
       },
     });
 
+    // Create welcome notification from Admin
+    try {
+      const admin = await (prisma.user as any).findFirst({ where: { role: Role.ADMIN } });
+      await (prisma as any).notification.create({
+        data: {
+          userId: user.id,
+          senderId: admin?.id,
+          title: "Chào mừng thành viên mới! ✨",
+          message: `Chào mừng ${user.name} đã gia nhập cộng đồng Vibe Coding! Chúc bạn có những trải nghiệm học tập và rèn luyện thú vị tại đây. Hãy bắt đầu bằng cách hoàn thành các thử thách lập trình để thăng hạng nhé!`,
+        }
+      });
+    } catch (nError) {
+      console.error("Welcome notification error:", nError);
+    }
+
     const payload: JWTPayload = { id: user.id, email: user.email, role: user.role as Role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);

@@ -6,13 +6,11 @@ export const getLeaderboard = async (req: Request, res: Response) => {
   try {
     const users = await (prisma.user as any).findMany({
       orderBy: { totalPoints: "desc" },
-      select: { id: true, name: true, totalPoints: true, level: true, badge: true },
+      select: { id: true, name: true, totalPoints: true, level: true, badge: true, avatarUrl: true },
       take: 100,
     });
-    console.log(`[Leaderboard] Returning ${users.length} users`);
     res.json(users);
   } catch (error) {
-    console.error("[Leaderboard Error]", error);
     res.status(500).json({ message: "Error fetching leaderboard" });
   }
 };

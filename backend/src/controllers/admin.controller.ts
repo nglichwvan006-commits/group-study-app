@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import bcrypt from "bcrypt";
 import prisma from "../utils/prisma";
 import { Role } from "../types/auth";
 

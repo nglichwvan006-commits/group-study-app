@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles } from 'lucide-react';
+import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';

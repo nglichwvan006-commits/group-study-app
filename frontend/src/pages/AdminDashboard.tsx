@@ -11,6 +11,7 @@ const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
   const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard'>('users');
   const [users, setUsers] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -25,11 +26,13 @@ const AdminDashboard: React.FC = () => {
 
   // Assignment form
   const [showAddAssignment, setShowAddAssignment] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', language: 'javascript', maxScore: 100, rubric: '' });
 
   useEffect(() => {
     fetchUsers();
     fetchLeaderboard();
+    fetchAssignments();
   }, []);
 
   const fetchUsers = async () => {
@@ -44,6 +47,15 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchAssignments = async () => {
+    try {
+      const response = await api.get('/assignments');
+      setAssignments(response.data);
+    } catch (error) {
+      console.error('Error fetching assignments', error);
+    }
+  };
+
   const fetchLeaderboard = async () => {
     try {
       const response = await api.get('/ranking/leaderboard');
@@ -51,6 +63,13 @@ const AdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching leaderboard', error);
     }
+  };
+
+  const handleRefreshData = () => {
+    fetchUsers();
+    fetchLeaderboard();
+    fetchAssignments();
+    toast.success('Đã làm mới dữ liệu!');
   };
 
   const handleCreateMember = async (e: React.FormEvent) => {
@@ -87,15 +106,48 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const loadingToast = toast.loading('Đang tạo bài tập...');
+    const loadingToast = toast.loading(editingAssignment ? 'Đang cập nhật bài tập...' : 'Đang tạo bài tập...');
     try {
-      await api.post('/assignments', newAssignment);
-      toast.success('Bài tập đã được đăng!', { id: loadingToast });
+      if (editingAssignment) {
+        await api.patch(`/assignments/${editingAssignment.id}`, newAssignment);
+        toast.success('Đã cập nhật bài tập!', { id: loadingToast });
+      } else {
+        await api.post('/assignments', newAssignment);
+        toast.success('Bài tập đã được đăng!', { id: loadingToast });
+      }
+      fetchAssignments();
       setShowAddAssignment(false);
+      setEditingAssignment(null);
       setNewAssignment({ title: '', description: '', deadline: '', language: 'javascript', maxScore: 100, rubric: '' });
     } catch (error) {
-      toast.error('Lỗi khi tạo bài tập', { id: loadingToast });
+      toast.error('Lỗi thao tác bài tập', { id: loadingToast });
     }
+  };
+
+  const handleDeleteAssignment = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa bài tập này?')) {
+      const loadingToast = toast.loading('Đang xóa bài tập...');
+      try {
+        await api.delete(`/assignments/${id}`);
+        fetchAssignments();
+        toast.success('Đã xóa bài tập thành công!', { id: loadingToast });
+      } catch (error) {
+        toast.error('Lỗi khi xóa bài tập', { id: loadingToast });
+      }
+    }
+  };
+
+  const handleEditAssignment = (a: any) => {
+    setEditingAssignment(a);
+    setNewAssignment({
+      title: a.title,
+      description: a.description,
+      deadline: new Date(a.deadline).toISOString().slice(0, 16),
+      language: a.language,
+      maxScore: a.maxScore,
+      rubric: a.rubric,
+    });
+    setShowAddAssignment(true);
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -212,6 +264,12 @@ const AdminDashboard: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-900/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
         
         <div className="p-4 sm:p-8 max-w-7xl mx-auto h-full flex flex-col">
+          {/* Header Refresh */}
+          <div className="flex justify-end mb-4">
+             <button onClick={handleRefreshData} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
+                Làm mới dữ liệu
+             </button>
+          </div>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -424,11 +482,37 @@ const AdminDashboard: React.FC = () => {
                     )}
                   </AnimatePresence>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="col-span-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-10 rounded-3xl shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 h-64 border-dashed">
-                      <BookOpen size={48} className="mb-4 opacity-30" />
-                      <p className="font-medium">Vui lòng tải lại hoặc xem danh sách bài tập (sẽ hiển thị ở đây).</p>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {assignments.map((a) => (
+                      <motion.div 
+                        key={a.id} 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex justify-between items-start mb-4">
+                            <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest">{a.language}</span>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleEditAssignment(a)} className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"><Plus size={18} className="rotate-45" /></button>
+                              <button onClick={() => handleDeleteAssignment(a.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 line-clamp-1">{a.title}</h3>
+                          <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4">{a.description}</p>
+                        </div>
+                        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-400">{new Date(a.deadline).toLocaleDateString()}</span>
+                          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{a.maxScore} <span className="text-[10px] opacity-50">pts</span></span>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {assignments.length === 0 && (
+                      <div className="col-span-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-10 rounded-3xl shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 h-64 border-dashed">
+                        <BookOpen size={48} className="mb-4 opacity-30" />
+                        <p className="font-medium">Chưa có bài tập nào được tạo.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

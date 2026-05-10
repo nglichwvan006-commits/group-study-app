@@ -64,6 +64,14 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
+  const handleRefreshData = () => {
+    fetchAssignments();
+    fetchMySubmissions();
+    fetchLeaderboard();
+    fetchNotifications();
+    toast.success('Đã làm mới dữ liệu!');
+  };
+
   const handleMarkNotificationsRead = async () => {
     try {
       await api.patch('/ranking/notifications/read');
@@ -246,10 +254,19 @@ Code: ${content}`;
         {/* Mobile Navbar */}
         <div className="md:hidden sticky top-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-40">
            <span className="font-black text-indigo-600 dark:text-indigo-400">STUDY SPACE</span>
-           <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu size={24} /></button>
+           <div className="flex items-center gap-2">
+             <button onClick={handleRefreshData} className="p-2 text-indigo-600"><Plus size={20} className="rotate-45" /></button>
+             <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu size={24} /></button>
+           </div>
         </div>
 
         <div className="p-4 sm:p-10 max-w-7xl mx-auto flex flex-col h-full min-h-screen">
+          {/* Desktop Header Refresh */}
+          <div className="hidden md:flex justify-end mb-4">
+             <button onClick={handleRefreshData} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
+                Làm mới dữ liệu
+             </button>
+          </div>
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3, ease: 'circOut' }} className="flex-1 flex flex-col">
               

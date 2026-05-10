@@ -163,3 +163,36 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error saving AI result" });
   }
 };
+
+export const updateAssignment = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, description, deadline, language, maxScore, rubric } = req.body;
+
+  try {
+    const assignment = await prisma.assignment.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        deadline: deadline ? new Date(deadline) : undefined,
+        language,
+        maxScore: maxScore ? parseInt(maxScore) : undefined,
+        rubric,
+      },
+    });
+    res.json(assignment);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating assignment" });
+  }
+};
+
+export const deleteAssignment = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.assignment.delete({ where: { id } });
+    res.json({ message: "Assignment deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting assignment" });
+  }
+};

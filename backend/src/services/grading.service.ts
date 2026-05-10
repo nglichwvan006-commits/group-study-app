@@ -3,17 +3,29 @@ import prisma from "../utils/prisma";
 export class GeminiCliGradingService {
   public static async gradeSubmission(submissionId: string) {
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) return;
+    if (!apiKey) {
+      console.error("[AI Grading] THIẾU OPENROUTER_API_KEY trong môi trường backend!");
+      return;
+    }
 
     try {
       const submission = await prisma.submission.findUnique({
         where: { id: submissionId },
-        include: { assignment: true },
+        include: { assignment: true, user: true },
       });
 
-      if (!submission || submission.status !== "PENDING") return;
+      if (!submission) {
+        console.error(`[AI Grading] Không tìm thấy bài nộp: ${submissionId}`);
+        return;
+      }
 
-      console.log(`[AI Grading] Đang chấm bài qua OpenRouter (DeepSeek): ${submissionId}`);
+      if (submission.status !== "PENDING") {
+        console.log(`[AI Grading] Bài nộp ${submissionId} đã được chấm hoặc đang xử lý. Bỏ qua.`);
+        return;
+      }
+
+      console.log(`[AI Grading] Bắt đầu chấm bài cho User: ${submission.user.name} (${submission.user.email})`);
+      console.log(`[AI Grading] Bài tập: ${submission.assignment.title}`);
 
       const prompt = `Bạn là một giám khảo lập trình khắt khe và công tâm.
 Hãy đánh giá mã nguồn ${submission.assignment.language} sau đây cho bài tập: "${submission.assignment.title}".

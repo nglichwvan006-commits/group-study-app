@@ -47,6 +47,13 @@ export const getProfile = async (req: any, res: Response) => {
         },
         posts: {
           orderBy: { createdAt: "desc" },
+          include: {
+            user: { select: { id: true, name: true, badge: true, level: true } },
+            comments: {
+              include: { user: { select: { id: true, name: true } } },
+              orderBy: { createdAt: "asc" }
+            }
+          }
         },
       },
     });

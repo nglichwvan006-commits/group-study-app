@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { User, School, Book, IdCard, GraduationCap, Calendar, Clock, CheckCircle, Edit3, Trash2, Send, MessageSquare } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { User, School, Book, IdCard, GraduationCap, Calendar, Edit3 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { PostItem } from './Feed';
 
 const Profile: React.FC = () => {
   const { id } = useParams();
@@ -54,6 +55,20 @@ const Profile: React.FC = () => {
     } catch (error) {
       toast.error('Lỗi khi cập nhật');
     }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+     if (!window.confirm('Xóa bài viết này?')) return;
+     try {
+       await api.delete(`/posts/${postId}`);
+       setProfile({
+         ...profile,
+         posts: profile.posts.filter((p: any) => p.id !== postId)
+       });
+       toast.success('Đã xóa bài viết');
+     } catch (error) {
+       toast.error('Lỗi khi xóa');
+     }
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center dark:text-white">Đang tải...</div>;
@@ -121,19 +136,30 @@ const Profile: React.FC = () => {
                     </div>
                  )}
               </motion.div>
-           </div>
-
-           <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl">
-                 <h3 className="text-lg font-black mb-6 uppercase">Lịch sử làm bài</h3>
+              
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800">
+                 <h3 className="text-lg font-black mb-6 uppercase">Bài tập đã hoàn thành</h3>
                  <div className="space-y-3">
                     {profile.submissions?.map((s: any) => (
                        <div key={s.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center">
-                          <p className="font-bold">{s.assignment?.title}</p>
-                          <p className="font-black text-indigo-600">{s.score} PTS</p>
+                          <p className="font-bold text-xs truncate w-32">{s.assignment?.title}</p>
+                          <p className="font-black text-indigo-600 text-xs">{s.score} PTS</p>
                        </div>
                     ))}
+                    {(!profile.submissions || profile.submissions.length === 0) && <p className="text-xs text-slate-400">Chưa có bài tập nào.</p>}
                  </div>
+              </div>
+           </div>
+
+           <div className="lg:col-span-8 space-y-6">
+              <h3 className="text-xl font-black uppercase tracking-tighter ml-4">Bài đăng của {profile.name}</h3>
+              <div className="space-y-6">
+                 {profile.posts?.map((p: any) => (
+                    <PostItem key={p.id} post={p} onDelete={handleDeletePost} />
+                 ))}
+                 {(!profile.posts || profile.posts.length === 0) && (
+                    <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[3rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">Người dùng chưa đăng bài nào.</div>
+                 )}
               </div>
            </div>
         </div>

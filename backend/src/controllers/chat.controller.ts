@@ -3,10 +3,28 @@ import prisma from "../utils/prisma";
 
 export const getRooms = async (req: any, res: Response) => {
   try {
-    const rooms = await (prisma as any).chatRoom.findMany({
+    let rooms = await (prisma as any).chatRoom.findMany({
       orderBy: { createdAt: "desc" },
       include: { creator: { select: { name: true } } }
     });
+
+    // Ensure GENERAL room exists
+    const hasGeneral = rooms.some((r: any) => r.code === "GENERAL");
+    if (!hasGeneral) {
+      const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+      if (admin) {
+        const generalRoom = await (prisma as any).chatRoom.create({
+          data: {
+            name: "Phòng Chung",
+            code: "GENERAL",
+            creatorId: admin.id
+          },
+          include: { creator: { select: { name: true } } }
+        });
+        rooms = [generalRoom, ...rooms];
+      }
+    }
+
     res.json(rooms);
   } catch (error) {
     res.status(500).json({ message: "Error fetching rooms" });

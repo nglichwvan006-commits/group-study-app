@@ -72,18 +72,6 @@ const AdminDashboard: React.FC = () => {
     toast.success('Đã làm mới dữ liệu!');
   };
 
-  const handleSyncXP = async () => {
-    const loadingToast = toast.loading('Đang đồng bộ lại XP toàn hệ thống...');
-    try {
-      await api.post('/admin/sync-xp');
-      toast.success('Đồng bộ XP thành công cho tất cả người dùng!', { id: loadingToast });
-      fetchUsers();
-      fetchLeaderboard();
-    } catch (error) {
-      toast.error('Lỗi khi đồng bộ XP', { id: loadingToast });
-    }
-  };
-
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     const loadingToast = toast.loading('Đang tạo tài khoản...');
@@ -296,12 +284,6 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Người dùng</h2>
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <button
-                        onClick={handleSyncXP}
-                        className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/25 transform hover:scale-105 active:scale-95 font-semibold"
-                      >
-                        <RefreshCw size={20} /> Đồng bộ XP
-                      </button>
                       <button
                         onClick={() => setShowAddMember(true)}
                         className="flex-1 sm:flex-none bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 transform hover:scale-105 active:scale-95 font-semibold"
@@ -538,9 +520,9 @@ const AdminDashboard: React.FC = () => {
               )}
 
               {activeTab === 'chat' && (
-                <div className="h-full flex flex-col pb-4">
+                <div className="h-[650px] flex flex-col pb-4">
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-4 sm:mb-6">Phòng Chat</h2>
-                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-[500px]">
+                  <div className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 dark:border-slate-800/50 overflow-hidden flex flex-col">
                     <Chat />
                   </div>
                 </div>

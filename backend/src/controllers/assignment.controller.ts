@@ -114,20 +114,6 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
     const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
 
     await prisma.$transaction(async (tx) => {
-      // Find previous graded submission for this assignment
-      const previousSubmissions = await tx.submission.findMany({
-        where: {
-          userId: submission.userId,
-          assignmentId: submission.assignmentId,
-          status: "GRADED",
-          id: { not: submission.id }
-        },
-        orderBy: { gradedAt: 'desc' },
-        take: 1
-      });
-
-      const oldScore = previousSubmissions.length > 0 ? (previousSubmissions[0].score || 0) : 0;
-
       await tx.submission.update({
         where: { id },
         data: {
@@ -138,24 +124,33 @@ export const submitAIResult = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      const user = await tx.user.findUnique({ where: { id: userId } });
-      if (user) {
-        // Calculate new total points: total - old + new
-        const newPoints = Math.max(0, user.totalPoints - oldScore + clampedScore);
-        const newLevel = Math.floor(newPoints / 100) + 1;
-        
-        let newBadge = "Bronze";
-        if (newPoints >= 1000) newBadge = "Master";
-        else if (newPoints >= 500) newBadge = "Diamond";
-        else if (newPoints >= 300) newBadge = "Platinum";
-        else if (newPoints >= 150) newBadge = "Gold";
-        else if (newPoints >= 50) newBadge = "Silver";
+      // Recalculate full XP for this user automatically from all best graded submissions
+      const allUserSubmissions = await tx.submission.findMany({
+        where: { userId, status: "GRADED" },
+        select: { assignmentId: true, score: true }
+      });
 
-        await tx.user.update({
-          where: { id: userId },
-          data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
-        });
-      }
+      const bestScores: { [key: string]: number } = {};
+      allUserSubmissions.forEach(s => {
+        if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
+          bestScores[s.assignmentId] = s.score || 0;
+        }
+      });
+
+      const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+      const newLevel = Math.floor(newPoints / 100) + 1;
+      
+      let newBadge = "Bronze";
+      if (newPoints >= 1000) newBadge = "Master";
+      else if (newPoints >= 500) newBadge = "Diamond";
+      else if (newPoints >= 300) newBadge = "Platinum";
+      else if (newPoints >= 150) newBadge = "Gold";
+      else if (newPoints >= 50) newBadge = "Silver";
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
+      });
     });
 
     res.json({ message: "AI score saved successfully" });
@@ -190,50 +185,54 @@ export const deleteAssignment = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   try {
+    const affectedUserIds = await prisma.submission.findMany({
+      where: { assignmentId: id, status: "GRADED" },
+      select: { userId: true }
+    }).then(subs => [...new Set(subs.map(s => s.userId))]);
+
     await prisma.$transaction(async (tx) => {
-      // 1. Find all graded submissions for this assignment to know how many points to subtract
-      const submissionsToDeduct = await tx.submission.findMany({
-        where: { 
-          assignmentId: id,
-          status: "GRADED",
-          score: { gt: 0 }
-        },
-        select: { userId: true, score: true }
-      });
-
-      // 2. Update each affected user's total points
-      for (const sub of submissionsToDeduct) {
-        const user = await tx.user.findUnique({ where: { id: sub.userId } });
-        if (user) {
-          const newPoints = Math.max(0, user.totalPoints - (sub.score || 0));
-          const newLevel = Math.floor(newPoints / 100) + 1;
-          
-          let newBadge = "Bronze";
-          if (newPoints >= 1000) newBadge = "Master";
-          else if (newPoints >= 500) newBadge = "Diamond";
-          else if (newPoints >= 300) newBadge = "Platinum";
-          else if (newPoints >= 150) newBadge = "Gold";
-          else if (newPoints >= 50) newBadge = "Silver";
-
-          await tx.user.update({
-            where: { id: sub.userId },
-            data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
-          });
-        }
-      }
-
-      // 3. Delete all submissions for this assignment
+      // 1. Delete all submissions for this assignment
       await tx.submission.deleteMany({
         where: { assignmentId: id }
       });
 
-      // 4. Delete the assignment
+      // 2. Delete the assignment
       await tx.assignment.delete({
         where: { id }
       });
+
+      // 3. Recalculate XP for all affected users automatically
+      for (const userId of affectedUserIds) {
+        const userSubmissions = await tx.submission.findMany({
+          where: { userId, status: "GRADED" },
+          select: { assignmentId: true, score: true }
+        });
+
+        const bestScores: { [key: string]: number } = {};
+        userSubmissions.forEach(s => {
+          if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
+            bestScores[s.assignmentId] = s.score || 0;
+          }
+        });
+
+        const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+        const newLevel = Math.floor(newPoints / 100) + 1;
+        
+        let newBadge = "Bronze";
+        if (newPoints >= 1000) newBadge = "Master";
+        else if (newPoints >= 500) newBadge = "Diamond";
+        else if (newPoints >= 300) newBadge = "Platinum";
+        else if (newPoints >= 150) newBadge = "Gold";
+        else if (newPoints >= 50) newBadge = "Silver";
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { totalPoints: newPoints, level: newLevel, badge: newBadge }
+        });
+      }
     });
 
-    res.json({ message: "Assignment deleted and user points updated successfully" });
+    res.json({ message: "Assignment deleted and users' XP automatically synchronized" });
   } catch (error) {
     console.error("Error deleting assignment:", error);
     res.status(500).json({ message: "Error deleting assignment" });

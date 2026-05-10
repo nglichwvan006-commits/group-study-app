@@ -177,26 +177,33 @@ export const overrideScore = async (req: any, res: any) => {
         },
       });
 
-      if (diff !== 0) {
-        const user = await tx.user.findUnique({ where: { id: submission.userId } });
-        if (user) {
-          const newPoints = Math.max(0, user.totalPoints + diff);
-          const newLevel = Math.floor(newPoints / 100) + 1;
-          
-          let newBadge = user.badge;
-          if (newPoints >= 1000) newBadge = "Master";
-          else if (newPoints >= 500) newBadge = "Diamond";
-          else if (newPoints >= 300) newBadge = "Platinum";
-          else if (newPoints >= 150) newBadge = "Gold";
-          else if (newPoints >= 50) newBadge = "Silver";
-          else newBadge = "Bronze";
+      // Recalculate full XP for this user automatically from all best graded submissions
+      const allUserSubmissions = await tx.submission.findMany({
+        where: { userId: submission.userId, status: "GRADED" },
+        select: { assignmentId: true, score: true }
+      });
 
-          await tx.user.update({
-            where: { id: user.id },
-            data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
-          });
+      const bestScores: { [key: string]: number } = {};
+      allUserSubmissions.forEach(s => {
+        if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
+          bestScores[s.assignmentId] = s.score || 0;
         }
-      }
+      });
+
+      const newPoints = Object.values(bestScores).reduce((a, b) => a + b, 0);
+      const newLevel = Math.floor(newPoints / 100) + 1;
+      
+      let newBadge = "Bronze";
+      if (newPoints >= 1000) newBadge = "Master";
+      else if (newPoints >= 500) newBadge = "Diamond";
+      else if (newPoints >= 300) newBadge = "Platinum";
+      else if (newPoints >= 150) newBadge = "Gold";
+      else if (newPoints >= 50) newBadge = "Silver";
+
+      await tx.user.update({
+        where: { id: submission.userId },
+        data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
+      });
     });
 
     res.json({ message: "Score updated successfully" });

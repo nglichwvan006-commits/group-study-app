@@ -190,9 +190,21 @@ export const deleteAssignment = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   try {
-    await prisma.assignment.delete({ where: { id } });
-    res.json({ message: "Assignment deleted successfully" });
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete all submissions for this assignment first
+      await tx.submission.deleteMany({
+        where: { assignmentId: id }
+      });
+
+      // 2. Delete the assignment
+      await tx.assignment.delete({
+        where: { id }
+      });
+    });
+
+    res.json({ message: "Assignment and all associated submissions deleted successfully" });
   } catch (error) {
+    console.error("Error deleting assignment:", error);
     res.status(500).json({ message: "Error deleting assignment" });
   }
 };

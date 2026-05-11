@@ -60,7 +60,8 @@ export const registerMember = async (req: Request, res: Response) => {
         role: user.role,
         totalPoints: user.totalPoints,
         level: user.level,
-        badge: user.badge
+        badge: user.badge,
+        skillTokens: user.skillTokens
       } 
     });
   } catch (error) {
@@ -109,7 +110,8 @@ export const loginMember = async (req: Request, res: Response) => {
         role: user.role,
         totalPoints: (user as any).totalPoints,
         level: (user as any).level,
-        badge: (user as any).badge
+        badge: (user as any).badge,
+        skillTokens: (user as any).skillTokens
       } 
     });
   } catch (error) {
@@ -167,7 +169,7 @@ export const getMe = async (req: any, res: Response) => {
   try {
     const user = await (prisma.user as any).findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, role: true, totalPoints: true, level: true, badge: true },
+      select: { id: true, email: true, name: true, role: true, totalPoints: true, level: true, badge: true, skillTokens: true },
     });
     res.json(user);
   } catch (error) {

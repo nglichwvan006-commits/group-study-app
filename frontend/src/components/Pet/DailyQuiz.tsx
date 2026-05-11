@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { HelpCircle, CheckCircle2, XCircle, Sparkles, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -8,6 +8,43 @@ interface DailyQuizProps {
   quizData: any;
   onAnswered: (result: any) => void;
 }
+
+const CountdownTimer: React.FC = () => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setHours(24, 0, 0, 0); // Next midnight
+      
+      const diff = tomorrow.getTime() - now.getTime();
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    setTimeLeft(calculateTimeLeft());
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-xl border border-white/5 backdrop-blur-sm">
+      <Clock size={14} className="text-indigo-400" />
+      <span className="text-[11px] font-black text-white/90 font-mono tracking-wider tabular-nums">
+        RESET SAU: {timeLeft}
+      </span>
+    </div>
+  );
+};
 
 const DailyQuiz: React.FC<DailyQuizProps> = ({ quizData, onAnswered }) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -40,8 +77,13 @@ const DailyQuiz: React.FC<DailyQuizProps> = ({ quizData, onAnswered }) => {
         <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mx-auto mb-4">
           <HelpCircle size={32} />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">Đang tải thử thách hôm nay</h3>
-        <p className="text-slate-400 text-sm italic">Hệ thống đang chuẩn bị câu hỏi cho bạn. Vui lòng chờ trong giây lát...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Đang tải thử thách hôm nay</h3>
+            <p className="text-slate-400 text-sm italic">Hệ thống đang chuẩn bị câu hỏi cho bạn. Vui lòng chờ trong giây lát...</p>
+          </div>
+          <CountdownTimer />
+        </div>
       </div>
     );
   }
@@ -60,6 +102,13 @@ const DailyQuiz: React.FC<DailyQuizProps> = ({ quizData, onAnswered }) => {
             <p className="text-white/50 text-sm">Trả lời đúng để hồi máu cho Pet</p>
           </div>
         </div>
+        <div className="hidden sm:block">
+           <CountdownTimer />
+        </div>
+      </div>
+
+      <div className="sm:hidden mb-4 flex justify-center">
+         <CountdownTimer />
       </div>
 
       <div className="mb-8">

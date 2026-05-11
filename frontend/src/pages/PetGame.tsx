@@ -214,7 +214,6 @@ const PetGame: React.FC = () => {
                   status: (prev.hp + (res.isCorrect ? 50 : -50)) <= 0 ? 'DEAD' : 'ALIVE'
                 }));
               }} 
-              onRefreshPet={fetchGameData}
             />
             
             <Mailbox />

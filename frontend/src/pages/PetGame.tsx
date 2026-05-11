@@ -48,7 +48,7 @@ const PetGame: React.FC = () => {
     setIsAttacking(true);
     const loadingToast = toast.loading('Đang thi triển kỹ năng...');
     try {
-      const response = await api.post('/use-skill', { targetUserId });
+      const response = await api.post('/pets/use-skill', { targetUserId });
       toast.success(response.data.message, { id: loadingToast, duration: 4000 });
       
       // Update pet state (lastSkillUsedAt)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star, Trash2, ShieldCheck, Mail, MessageCircle } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star, Trash2, ShieldCheck, Mail, MessageCircle, Heart } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +41,7 @@ const MemberDashboard: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
+  const [pet, setPet] = useState<any>(null);
 
   // Support State
   const [showSupport, setShowSupport] = useState(false);
@@ -53,6 +54,7 @@ const MemberDashboard: React.FC = () => {
     fetchMySubmissions();
     fetchLeaderboard();
     fetchNotifications();
+    fetchPet();
     if (user) {
       setSupportData({ name: user.name || '', email: user.email || '', message: '' });
     }
@@ -123,11 +125,21 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
+  const fetchPet = async () => {
+    try {
+      const response = await api.get('/pets/me');
+      setPet(response.data);
+    } catch (error) {
+      console.error('Error fetching pet info');
+    }
+  };
+
   const handleRefreshData = () => {
     fetchAssignments();
     fetchMySubmissions();
     fetchLeaderboard();
     fetchNotifications();
+    fetchPet();
     refreshUser();
     toast.success('Đã làm mới dữ liệu!');
   };
@@ -321,6 +333,35 @@ const MemberDashboard: React.FC = () => {
               
               {activeTab === 'assignments' && (
                 <div className="space-y-8 text-left">
+                  {pet && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => navigate('/pet-game')}
+                      className="bg-white/5 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-6 rounded-[2.5rem] flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-all group"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${pet.type === 'MAGE' ? 'from-purple-500 to-indigo-600' : pet.type === 'FAT' ? 'from-orange-400 to-yellow-500' : 'from-blue-400 to-cyan-500'} flex items-center justify-center text-3xl shadow-lg group-hover:rotate-12 transition-transform`}>
+                          {pet.type === 'MAGE' ? '🧙‍♂️' : pet.type === 'FAT' ? '🍔' : '⚽'}
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-black">{pet.name}</h4>
+                          <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <Heart size={14} className="text-red-500 fill-red-500" />
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{pet.hp} / {pet.maxHp} HP</span>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${pet.status === 'ALIVE' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                              {pet.status === 'ALIVE' ? 'Đang khỏe' : 'Cần hồi sinh'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest">
+                        Vào khu vui chơi <ChevronRight size={16} />
+                      </div>
+                    </motion.div>
+                  )}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h2 className="text-3xl font-black tracking-tighter uppercase italic">Thử thách Lập trình</h2>
                     <div className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl w-fit shadow-inner">

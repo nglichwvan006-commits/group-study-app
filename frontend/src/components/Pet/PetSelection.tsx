@@ -53,6 +53,16 @@ const PetSelection: React.FC<PetSelectionProps> = ({ onSelected }) => {
       toast.success(`Chào mừng ${response.data.name} gia nhập đội ngũ!`, { id: loadingToast });
       onSelected(response.data);
     } catch (error: any) {
+      if (error.response?.status === 400 && error.response?.data?.message === "Bạn đã có pet rồi") {
+        try {
+          const res = await api.get('/pets/me');
+          onSelected(res.data);
+          toast.dismiss(loadingToast);
+          return;
+        } catch (fetchError) {
+          // Fallback to error toast if fetch fails
+        }
+      }
       toast.error(error.response?.data?.message || 'Lỗi khi chọn Pet', { id: loadingToast });
     } finally {
       setIsSubmitting(false);

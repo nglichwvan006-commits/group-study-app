@@ -11,6 +11,8 @@ import rankingRoutes from "./routes/ranking.routes";
 import profileRoutes from "./routes/profile.routes";
 import postRoutes from "./routes/post.routes";
 import supportRoutes from "./routes/support.routes";
+import petRoutes from "./routes/pet.routes";
+import quizRoutes from "./routes/quiz.routes";
 
 const app = express();
 
@@ -35,6 +37,9 @@ app.use("/api/ranking", rankingRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/pets", petRoutes);
+app.use("/api/quizzes", quizRoutes);
+app.use("/api/mailbox", mailboxRoutes);
 
 app.get("/", (req, res) => {
   res.send("Group Study API is running");

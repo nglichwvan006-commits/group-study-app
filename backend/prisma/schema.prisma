@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -46,6 +45,62 @@ model User {
   comments      Comment[]
   likes         Like[]
   supportMessages SupportMessage[]
+  pet           Pet?
+  quizAnswers   UserQuizAnswer[]
+}
+
+model Pet {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            String   // MAGE, FAT, MESSI
+  name            String
+  hp              Int      @default(1000)
+  maxHp           Int      @default(1000)
+  status          String   @default("ALIVE") // ALIVE, DEAD
+  lastSkillUsedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DailyQuiz {
+  id            String   @id @default(uuid())
+  question      String
+  optionsJson   String   // Store as JSON string
+  correctAnswer String
+  explanation   String?
+  quizDate      DateTime @unique
+  userAnswers   UserQuizAnswer[]
+}
+
+model UserQuizAnswer {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId         String
+  quiz           DailyQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  selectedAnswer String
+  isCorrect      Boolean
+  answeredAt     DateTime  @default(now())
+
+  @@unique([userId, quizId])
+}
+
+model PetSkillLog {
+  id             String   @id @default(uuid())
+  attackerUserId String
+  targetUserId   String?
+  petType        String
+  skillName      String
+  effectValue    Int
+  createdAt      DateTime @default(now())
+}
+
+model PetReviveProgress {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  completedAssignmentIds String    // Store as comma-separated IDs
+  createdAt              DateTime  @default(now())
 }
 
 model Post {

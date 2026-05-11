@@ -8,6 +8,7 @@ import MemberDashboard from './pages/MemberDashboard';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
 import Search from './pages/Search';
+import PetGame from './pages/PetGame';
 import { Toaster } from 'react-hot-toast';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -60,6 +61,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Search />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/pet-game" 
+          element={
+            <ProtectedRoute>
+              <PetGame />
             </ProtectedRoute>
           } 
         />

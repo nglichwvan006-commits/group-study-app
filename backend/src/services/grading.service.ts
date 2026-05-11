@@ -198,6 +198,44 @@ Nhiệm vụ của bạn:
           data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
         });
 
+        // Pet Revive Logic: Check if pet is DEAD and assignment is Medium/C++
+        const pet = await tx.pet.findUnique({ where: { userId: submission.userId } });
+        if (pet && pet.status === "DEAD") {
+           const isMedium = ["Trung bình", "Khá"].includes(submission.assignment.difficulty || "");
+           const isGoodScore = finalScore >= (submission.assignment.maxScore * 0.5); // At least 50% score
+           
+           if (isMedium && isGoodScore) {
+              const progress = await tx.petReviveProgress.findUnique({ where: { userId: submission.userId } });
+              let currentIds = progress ? progress.completedAssignmentIds.split(",").filter(id => id.length > 0) : [];
+              
+              if (!currentIds.includes(submission.assignmentId)) {
+                 currentIds.push(submission.assignmentId);
+                 const newIdsStr = currentIds.join(",");
+                 
+                 if (progress) {
+                    await tx.petReviveProgress.update({
+                       where: { userId: submission.userId },
+                       data: { completedAssignmentIds: newIdsStr }
+                    });
+                 } else {
+                    await tx.petReviveProgress.create({
+                       data: { userId: submission.userId, completedAssignmentIds: newIdsStr }
+                    });
+                 }
+
+                 if (currentIds.length <= 3) {
+                    await (tx as any).notification.create({
+                       data: {
+                          userId: submission.userId,
+                          title: "Tiến trình hồi sinh Pet 🐱",
+                          message: `Bạn đã hoàn thành ${currentIds.length}/3 bài tập Medium để hồi sinh Pet!`
+                       }
+                    });
+                 }
+              }
+           }
+        }
+
         // Enhanced Notification
         let msg = `Bài làm mới của bạn cho "${submission.assignment.title}" đạt ${finalScore}/${submission.assignment.maxScore} điểm.\n\nNhận xét: ${result.feedback}`;
         if (result.suggestedCode) {

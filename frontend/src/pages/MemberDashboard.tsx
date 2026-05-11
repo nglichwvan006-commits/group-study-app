@@ -278,7 +278,13 @@ const MemberDashboard: React.FC = () => {
           <NavItem id="leaderboard" icon={Trophy} label="Xếp hạng" />
           <NavItem id="notifications" icon={Bell} label="Thông báo" badgeCount={notifications.filter(n => !n.isRead).length} />
           <NavItem id="resources" icon={FileText} label="Tài liệu" />
-          <NavItem id="chat" icon={MessageSquare} label="Phòng chat" />
+          <button onClick={() => navigate('/pet-game')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm group relative overflow-hidden">
+            <Sparkles size={18} className="text-amber-500" />
+            <span>Pet Game</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <NavItem id="chat" icon={MessageSquare} label="Thảo luận" />
+
           <button
             onClick={() => { setShowSupport(true); fetchSupportHistory(); }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm"

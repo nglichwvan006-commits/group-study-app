@@ -19,5 +19,6 @@ router.post("/warnings", sendWarning as any);
 router.post("/sync-xp", syncAllUsersXP as any);
 router.post("/reset-all-points", resetAllPoints as any);
 router.patch("/submissions/:id/override", overrideScore as any);
+router.post("/quizzes/force-generate", forceGenerateQuiz as any);
 
 export default router;

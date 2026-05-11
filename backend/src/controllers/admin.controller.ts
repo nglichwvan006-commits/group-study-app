@@ -290,3 +290,12 @@ export const overrideScore = async (req: any, res: any) => {
     res.status(500).json({ message: "Error updating score" });
   }
 };
+
+export const forceGenerateQuiz = async (req: Request, res: Response) => {
+  try {
+    await DailyQuizService.generateTodayQuiz();
+    res.json({ message: "Đã kích hoạt tạo quiz hằng ngày thành công!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi tạo quiz" });
+  }
+};

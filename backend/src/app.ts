@@ -10,6 +10,7 @@ import resourceRoutes from "./routes/resource.routes";
 import rankingRoutes from "./routes/ranking.routes";
 import profileRoutes from "./routes/profile.routes";
 import postRoutes from "./routes/post.routes";
+import supportRoutes from "./routes/support.routes";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/ranking", rankingRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/support", supportRoutes);
 
 app.get("/", (req, res) => {
   res.send("Group Study API is running");

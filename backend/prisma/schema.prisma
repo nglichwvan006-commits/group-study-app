@@ -45,6 +45,7 @@ model User {
   posts         Post[]
   comments      Comment[]
   likes         Like[]
+  supportMessages SupportMessage[]
 }
 
 model Post {
@@ -173,4 +174,17 @@ model Warning {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model SupportMessage {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  message     String
+  reply       String?
+  userId      String?  // Optional, if user is logged in
+  user        User?    @relation(fields: [userId], references: [id])
+  status      String   @default("PENDING") // PENDING, REPLIED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard' | 'posts'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard' | 'posts' | 'support'>('users');
   const [users, setUsers] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -41,11 +41,38 @@ const AdminDashboard: React.FC = () => {
   const [rawAssignmentText, setRawAssignmentText] = useState('');
   const [selectedAssignments, setSelectedAssignments] = useState<string[]>([]);
 
+  // Support State
+  const [supportMessages, setSupportMessages] = useState<any[]>([]);
+  const [replyData, setReplyData] = useState({ id: '', reply: '' });
+  
   useEffect(() => {
     fetchUsers();
     fetchLeaderboard();
     fetchAssignments();
+    fetchSupportMessages();
   }, []);
+
+  const fetchSupportMessages = async () => {
+    try {
+      const res = await api.get('/support');
+      setSupportMessages(res.data);
+    } catch (error) {
+      console.error('Error fetching support messages');
+    }
+  };
+
+  const handleReplySupport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const loadingToast = toast.loading('Đang gửi phản hồi...');
+    try {
+      await api.patch(`/support/${replyData.id}/reply`, { reply: replyData.reply });
+      toast.success('Đã gửi phản hồi thành công!', { id: loadingToast });
+      setReplyData({ id: '', reply: '' });
+      fetchSupportMessages();
+    } catch (error) {
+      toast.error('Lỗi khi gửi phản hồi', { id: loadingToast });
+    }
+  };
 
   const handleSelectAllAssignments = () => {
     if (selectedAssignments.length === assignments.length) {
@@ -373,6 +400,7 @@ const AdminDashboard: React.FC = () => {
           <NavItem id="leaderboard" icon={Trophy} label="Bảng xếp hạng" />
           <NavItem id="resources" icon={FileText} label="Kho tài liệu" />
           <NavItem id="chat" icon={MessageSquare} label="Phòng chat" />
+          <NavItem id="support" icon={Shield} label="Hỗ trợ khách" />
         </nav>
         <div className="p-4 m-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 space-y-2">
           <button onClick={toggleDarkMode} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-all font-bold text-xs">{darkMode ? <><Sun size={16} className="text-amber-500" /> Sáng</> : <><Moon size={16} className="text-indigo-500" /> Tối</>}</button>
@@ -693,6 +721,75 @@ const AdminDashboard: React.FC = () => {
               {activeTab === 'resources' && <ResourceLibrary />}
               {activeTab === 'chat' && (
                 <div className="h-[650px] bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col min-h-0"><Chat /></div>
+              )}
+
+              {activeTab === 'support' && (
+                <div className="space-y-6 text-left">
+                   <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Hỗ trợ khách hàng</h2>
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Danh sách tin nhắn</h3>
+                         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                               {supportMessages.length === 0 ? (
+                                 <p className="p-10 text-center text-slate-400 font-bold italic">Không có tin nhắn hỗ trợ nào.</p>
+                               ) : (
+                                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {supportMessages.map((m) => (
+                                      <div key={m.id} onClick={() => setReplyData({ id: m.id, reply: m.reply || '' })} className={`p-6 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 ${replyData.id === m.id ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : ''}`}>
+                                         <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                               <p className="font-bold text-sm">{m.name}</p>
+                                               <p className="text-[10px] text-slate-400 font-medium">{m.email}</p>
+                                            </div>
+                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${m.status === 'REPLIED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                               {m.status === 'REPLIED' ? 'ĐÃ PHẢN HỒI' : 'CHỜ XỬ LÝ'}
+                                            </span>
+                                         </div>
+                                         <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">"{m.message}"</p>
+                                         <p className="text-[8px] text-slate-400 mt-2">{new Date(m.createdAt).toLocaleString()}</p>
+                                      </div>
+                                    ))}
+                                 </div>
+                               )}
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="space-y-4">
+                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Phản hồi tin nhắn</h3>
+                         {replyData.id ? (
+                           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800 sticky top-4">
+                              <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                 <p className="text-[10px] font-black text-indigo-500 uppercase mb-2">Nội dung khách gửi:</p>
+                                 <p className="text-sm italic text-slate-600 dark:text-slate-400">"{supportMessages.find(m => m.id === replyData.id)?.message}"</p>
+                              </div>
+                              <form onSubmit={handleReplySupport} className="space-y-6">
+                                 <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 px-1">Nội dung phản hồi</label>
+                                    <textarea 
+                                       required 
+                                       placeholder="Chào bạn, vấn đề của bạn đã được giải quyết..." 
+                                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm" 
+                                       rows={10} 
+                                       value={replyData.reply} 
+                                       onChange={(e) => setReplyData({...replyData, reply: e.target.value})}
+                                    ></textarea>
+                                 </div>
+                                 <div className="flex gap-3">
+                                    <button type="button" onClick={() => setReplyData({ id: '', reply: '' })} className="flex-1 py-4 text-slate-500 font-bold">HỦY</button>
+                                    <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all">GỬI PHẢN HỒI</button>
+                                 </div>
+                              </form>
+                           </div>
+                         ) : (
+                           <div className="bg-white/50 dark:bg-slate-900/50 p-20 rounded-[2.5rem] text-center border-4 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 font-bold">
+                              Chọn một tin nhắn bên trái để xem chi tiết và phản hồi.
+                           </div>
+                         )}
+                      </div>
+                   </div>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>

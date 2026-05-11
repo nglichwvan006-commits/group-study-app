@@ -208,7 +208,7 @@ const Profile: React.FC = () => {
               
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 text-left">
                  <h3 className="text-lg font-black mb-6 uppercase">Bài tập hoàn thành</h3>
-                 <div className="space-y-3">
+                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {profile.submissions?.slice().sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((s: any, index: number, array: any[]) => {
                        const previousAttempts = array.slice(0, index).filter(prev => prev.assignmentId === s.assignmentId).length;
                        return (

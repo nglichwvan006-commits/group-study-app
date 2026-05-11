@@ -13,6 +13,7 @@ import postRoutes from "./routes/post.routes";
 import supportRoutes from "./routes/support.routes";
 import petRoutes from "./routes/pet.routes";
 import quizRoutes from "./routes/quiz.routes";
+import mailboxRoutes from "./routes/mailbox.routes";
 
 const app = express();
 

@@ -359,7 +359,10 @@ const AdminDashboard: React.FC = () => {
 
       <div className="flex-1 h-screen overflow-y-auto relative pt-16 md:pt-0">
         <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-40">
-           <span className="font-bold text-slate-900 dark:text-white">ADMIN PANEL</span>
+           <div className="flex items-center gap-2">
+             <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+             <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Gõ Thủng Bàn Phím</span>
+           </div>
            <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu size={24} /></button>
         </div>
 

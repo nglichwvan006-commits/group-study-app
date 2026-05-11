@@ -65,11 +65,11 @@ const Login: React.FC = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-              className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/30"
+              className="w-20 h-20 bg-slate-900 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/30 overflow-hidden"
             >
-              <ShieldCheck className="text-white" size={32} />
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
             </motion.div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-4">Study Space</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-4">Gõ Thủng Bàn Phím</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
               {isLoginView ? 'Chào mừng bạn quay trở lại' : 'Gia nhập cộng đồng học tập'}
             </p>

@@ -254,7 +254,10 @@ const MemberDashboard: React.FC = () => {
 
       <div className="flex-1 h-screen overflow-y-auto relative bg-transparent scroll-smooth">
         <div className="md:hidden sticky top-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-40">
-           <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Study Space</span>
+           <div className="flex items-center gap-2">
+             <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+             <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Gõ Thủng Bàn Phím</span>
+           </div>
            <div className="flex items-center gap-2">
              <button onClick={handleRefreshData} className="p-2 text-indigo-600"><RefreshCw size={20} /></button>
              <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu size={24} /></button>

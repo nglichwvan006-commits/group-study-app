@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
 import { useNavigate, Link } from 'react-router-dom';
+import confetti from 'canvas-confetti';
 
 const AssignmentSkeleton = () => (
   <div className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 animate-pulse">
@@ -133,6 +134,31 @@ const MemberDashboard: React.FC = () => {
       console.error('Error fetching pet info');
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'leaderboard' && leaderboard.length > 0) {
+      const duration = 5 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        // since particles fall down, start a bit higher than random
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, leaderboard]);
 
   const handleRefreshData = () => {
     fetchAssignments();

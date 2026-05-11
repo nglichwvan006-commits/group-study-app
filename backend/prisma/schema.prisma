@@ -57,8 +57,8 @@ model Pet {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type            String   // MAGE, FAT, MESSI
   name            String
-  hp              Int      @default(1000)
-  maxHp           Int      @default(1000)
+  hp              Int      @default(150)
+  maxHp           Int      @default(500)
   status          String   @default("ALIVE") // ALIVE, DEAD
   lastSkillUsedAt DateTime?
   createdAt       DateTime @default(now())

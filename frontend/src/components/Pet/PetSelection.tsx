@@ -25,7 +25,7 @@ const PET_TYPES = [
     id: 'MESSI', 
     name: 'Messi', 
     emoji: '⚽', 
-    description: 'Trừ 35% HP Pet của đối thủ được chọn mỗi ngày.',
+    description: 'Trừ random 20–100 HP Pet của đối thủ được chọn mỗi ngày.',
     color: 'from-blue-400 to-cyan-500',
     skill: 'Power Shot'
   }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star, Trash2, ShieldCheck, Mail, MessageCircle, Heart, Zap } from 'lucide-react';
+import { BookOpen, MessageSquare, LogOut, Send, CheckCircle, FileText, Sun, Moon, Menu, X, Clock, Trophy, Bell, Sparkles, RefreshCw, Search, Users, ChevronRight, LayoutList, Star, Trash2, ShieldCheck, Mail, MessageCircle, Heart, Zap, Gamepad2 } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -296,10 +296,13 @@ const MemberDashboard: React.FC = () => {
           <NavItem id="leaderboard" icon={Trophy} label="Xếp hạng" />
           <NavItem id="notifications" icon={Bell} label="Thông báo" badgeCount={notifications.filter(n => !n.isRead).length} />
           <NavItem id="resources" icon={FileText} label="Tài liệu" />
-          <button onClick={() => navigate('/pet-game', { state: { pet } })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm group relative overflow-hidden">
-            <Sparkles size={18} className="text-amber-500" />
+          <button 
+            onClick={() => navigate('/pet-game', { state: { pet } })} 
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black transition-all text-sm shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
+          >
+            <Gamepad2 size={18} />
             <span>Pet Game</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
           <NavItem id="chat" icon={MessageSquare} label="Thảo luận" />
 

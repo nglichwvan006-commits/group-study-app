@@ -32,8 +32,8 @@ export const selectPet = async (req: any, res: Response) => {
         userId: req.user.id,
         type,
         name: name || (type === "MAGE" ? "Pháp Sư Meo Meo" : type === "FAT" ? "Meow Béo" : "Messi"),
-        hp: 1000,
-        maxHp: 1000,
+        hp: 150,
+        maxHp: 500,
         status: "ALIVE",
       },
     });
@@ -98,7 +98,7 @@ export const useSkill = async (req: any, res: Response) => {
         messageToUser = `Bạn đã dùng Meow Béo trừ ${effectValue} điểm của ${targetUser.name}. (Tiêu tốn 100 Token)`;
         messageToTarget = `Meow Béo của ${req.user.name} đã trừ ${effectValue} điểm của bạn.`;
       } else if (pet.type === "MESSI") {
-        // Power Shot: 35% HP damage
+        // Power Shot: Random HP damage (20-100)
         if (!targetUserId || targetUserId === userId) {
           throw new Error("Mục tiêu không hợp lệ");
         }
@@ -107,7 +107,7 @@ export const useSkill = async (req: any, res: Response) => {
           throw new Error("Đối thủ không có pet hoặc pet đã chết");
         }
 
-        effectValue = Math.floor(targetPet.hp * 0.35);
+        effectValue = Math.floor(Math.random() * 81) + 20;
         const newHp = Math.max(0, targetPet.hp - effectValue);
         const newStatus = newHp <= 0 ? "DEAD" : "ALIVE";
 
@@ -119,7 +119,7 @@ export const useSkill = async (req: any, res: Response) => {
         const targetUser = await tx.user.findUnique({ where: { id: targetUserId } });
         messageToUser = `Messi của bạn gây ${effectValue} sát thương lên pet của ${targetUser?.name}. (Tiêu tốn 100 Token)`;
         messageToTarget = `Pet của bạn bị Messi của ${req.user.name} tấn công và mất ${effectValue} HP.`;
-        
+
         if (newStatus === "DEAD") {
           messageToTarget += " Pet của bạn đã chết!";
         }

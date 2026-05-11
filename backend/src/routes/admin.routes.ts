@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUsers, createMember, deleteUser, muteUser, sendWarning, overrideScore, sendNotification, syncAllUsersXP, resetAllPoints, resetUserPoints, banUser, changeUserPassword } from "../controllers/admin.controller";
+import { getUsers, createMember, deleteUser, muteUser, sendWarning, overrideScore, sendNotification, syncAllUsersXP, resetAllPoints, resetUserPoints, banUser, changeUserPassword, forceGenerateQuiz } from "../controllers/admin.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
 import { Role } from "../types/auth";
 

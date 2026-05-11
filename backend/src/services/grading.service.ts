@@ -193,13 +193,28 @@ Nhiệm vụ của bạn:
         else if (newPoints >= 1500) newBadge = "Gold";
         else if (newPoints >= 500) newBadge = "Silver";
 
+        // Random token reward: 0-50 tokens for first-time success (>50% score)
+        const existingGradedCount = await (tx as any).submission.count({
+          where: {
+            userId: submission.userId,
+            assignmentId: submission.assignmentId,
+            status: "GRADED",
+            id: { not: submissionId }
+          }
+        });
+
+        let tokenReward = 0;
+        if (existingGradedCount === 0 && finalScore >= (submission.assignment.maxScore * 0.5)) {
+          tokenReward = Math.floor(Math.random() * 51);
+        }
+
         await (tx as any).user.update({
           where: { id: submission.userId },
           data: { 
             totalPoints: newPoints, 
             level: newLevel, 
             badge: newBadge,
-            skillTokens: { increment: 10 }
+            skillTokens: { increment: tokenReward }
           },
         });
 
@@ -242,7 +257,11 @@ Nhiệm vụ của bạn:
         }
 
         // Enhanced Notification
-        let msg = `Bài làm mới của bạn cho "${submission.assignment.title}" đạt ${finalScore}/${submission.assignment.maxScore} điểm.\n\nNhận xét: ${result.feedback}`;
+        let msg = `Bài làm mới của bạn cho "${submission.assignment.title}" đạt ${finalScore}/${submission.assignment.maxScore} điểm.`;
+        if (tokenReward > 0) {
+           msg += `\n🎁 Bạn được thưởng **${tokenReward} Token** vì hoàn thành tốt bài tập!`;
+        }
+        msg += `\n\nNhận xét: ${result.feedback}`;
         if (result.suggestedCode) {
            msg += `\n\n💡 Gợi ý code mẫu:\n\`\`\`${submission.assignment.language}\n${result.suggestedCode}\n\`\`\``;
         }

@@ -28,7 +28,7 @@ const Mailbox: React.FC = () => {
   const handleRead = async (id: string) => {
     try {
       await api.patch(`/mailbox/${id}/read`);
-      setMails(mails.map(m => m.id === id ? { ...m, isRead: true } : m));
+      setMails(mails.map((m: any) => m.id === id ? { ...m, isRead: true } : m));
     } catch (error) {
       console.error(error);
     }
@@ -37,7 +37,7 @@ const Mailbox: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await api.delete(`/mailbox/${id}`);
-      setMails(mails.filter(m => m.id !== id));
+      setMails(mails.filter((m: any) => m.id !== id));
       toast.success('Đã xóa thư');
     } catch (error) {
       toast.error('Lỗi khi xóa thư');
@@ -45,10 +45,10 @@ const Mailbox: React.FC = () => {
   };
 
   const handleReadAll = async () => {
-    if (mails.every(m => m.isRead)) return;
+    if (mails.every((m: any) => m.isRead)) return;
     try {
       await api.patch('/mailbox/read-all');
-      setMails(mails.map(m => ({ ...m, isRead: true })));
+      setMails(mails.map((m: any) => ({ ...m, isRead: true })));
       toast.success('Đã đánh dấu tất cả là đã đọc');
     } catch (error) {
       toast.error('Lỗi khi cập nhật');

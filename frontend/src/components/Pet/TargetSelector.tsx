@@ -29,7 +29,7 @@ const TargetSelector: React.FC<TargetSelectorProps> = ({ onSelect, onClose, petT
     }
   };
 
-  const filteredTargets = targets.filter(t => 
+  const filteredTargets = targets.filter((t: any) => 
     t.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -74,7 +74,7 @@ const TargetSelector: React.FC<TargetSelectorProps> = ({ onSelect, onClose, petT
               [1, 2, 3].map(i => <div key={i} className="h-20 bg-white/5 animate-pulse rounded-2xl" />)
             ) : filteredTargets.length === 0 ? (
               <div className="text-center py-10 text-slate-500 italic">Không tìm thấy ai phù hợp...</div>
-            ) : filteredTargets.map((target) => (
+            ) : filteredTargets.map((target: any) => (
               <motion.div
                 key={target.id}
                 whileHover={{ scale: 1.02, x: 5 }}

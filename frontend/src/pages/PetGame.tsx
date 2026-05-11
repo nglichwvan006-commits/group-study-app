@@ -88,7 +88,7 @@ const PetGame: React.FC = () => {
   if (!pet) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
-        <PetSelection onSelected={(newPet) => setPet(newPet)} />
+        <PetSelection onSelected={(newPet: any) => setPet(newPet)} />
       </div>
     );
   }
@@ -178,10 +178,10 @@ const PetGame: React.FC = () => {
           <div className="lg:col-span-7 space-y-8">
             <DailyQuiz 
               quizData={quizData} 
-              onAnswered={(res) => {
+              onAnswered={(res: any) => {
                 setQuizData({ ...quizData, answered: true, result: res });
                 // Update HP in pet UI
-                setPet(prev => ({
+                setPet((prev: any) => ({
                   ...prev,
                   hp: Math.max(0, Math.min(prev.maxHp, prev.hp + (res.isCorrect ? 50 : -50))),
                   status: (prev.hp + (res.isCorrect ? 50 : -50)) <= 0 ? 'DEAD' : 'ALIVE'
@@ -200,7 +200,7 @@ const PetGame: React.FC = () => {
           <TargetSelector 
             petType={pet.type}
             onClose={() => setShowTargetSelector(false)}
-            onSelect={(targetId) => handleUseSkill(targetId)}
+            onSelect={(targetId: any) => handleUseSkill(targetId)}
           />
         )}
       </AnimatePresence>

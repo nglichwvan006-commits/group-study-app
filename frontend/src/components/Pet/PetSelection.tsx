@@ -73,7 +73,7 @@ const PetSelection: React.FC<PetSelectionProps> = ({ onSelected }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        {PET_TYPES.map((type) => (
+        {PET_TYPES.map((type: any) => (
           <motion.div
             key={type.id}
             whileHover={{ scale: 1.05 }}

@@ -215,7 +215,7 @@ const MemberDashboard: React.FC = () => {
       <motion.div className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50 flex flex-col transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6">
           <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
-            <Sparkles className="text-indigo-600" size={20} /> Study Space
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover" /> Gõ Thủng Bàn Phím
           </h1>
           <div className="mt-8 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl text-left">
             <Link to={`/profile/${user?.id}`} className="block group">

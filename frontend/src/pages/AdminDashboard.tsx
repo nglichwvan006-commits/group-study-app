@@ -341,8 +341,10 @@ const AdminDashboard: React.FC = () => {
       </AnimatePresence>
       <motion.div className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50 flex flex-col transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6 md:p-8 pt-8">
-           <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2"><Shield className="text-indigo-600" size={24} /> Admin Panel</h1>
-           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">{user?.name}</p>
+           <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
+             <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover" /> Gõ Thủng Bàn Phím
+           </h1>
+           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Hệ thống Quản trị</p>
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavItem id="users" icon={UserIcon} label="Quản lý người dùng" />

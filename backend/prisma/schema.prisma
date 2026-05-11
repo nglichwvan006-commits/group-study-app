@@ -20,6 +20,7 @@ model User {
   
   // Ranking fields
   totalPoints   Int            @default(0)
+  skillTokens   Int            @default(0)
   level         Int            @default(1)
   badge         String         @default("Bronze")
 

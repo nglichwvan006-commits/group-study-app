@@ -279,7 +279,13 @@ const MemberDashboard: React.FC = () => {
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                <motion.div initial={{ width: 0 }} animate={{ width: `${((user?.totalPoints || 0) % 2000) / 20}%` }} className="h-full bg-indigo-500 rounded-full" />
             </div>
-            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-2">Tổng điểm: {user?.totalPoints || 0}</p>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">Điểm: {user?.totalPoints || 0}</p>
+              <div className="flex items-center gap-1">
+                <Zap size={10} className="text-yellow-500 fill-yellow-500" />
+                <p className="text-[10px] font-black text-yellow-600 dark:text-yellow-400">Tokens: {user?.skillTokens || 0}</p>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -48,107 +48,114 @@ export const useSkill = async (req: any, res: Response) => {
   const { targetUserId } = req.body;
 
   try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.skillTokens < 100) {
+      return res.status(400).json({ message: "Bạn không đủ 100 Token để thi triển kỹ năng (Làm bài tập để nhận Token)" });
+    }
+
     const pet = await prisma.pet.findUnique({ where: { userId } });
     if (!pet || pet.status === "DEAD") {
       return res.status(400).json({ message: "Pet của bạn không thể dùng kỹ năng" });
     }
 
-    // Check if skill used today
     const now = new Date();
-    if (pet.lastSkillUsedAt) {
-      const lastUsed = new Date(pet.lastSkillUsedAt);
-      if (lastUsed.toDateString() === now.toDateString()) {
-        return res.status(400).json({ message: "Bạn đã dùng kỹ năng hôm nay rồi" });
-      }
-    }
+    // Removed daily limit to allow token-based usage
 
     let effectValue = 0;
     let messageToUser = "";
     let messageToTarget = "";
 
-    if (pet.type === "MAGE") {
-      // Lucky Score: 0 -> 45 points
-      effectValue = Math.floor(Math.random() * 46);
-      await prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      // Deduct tokens
+      await tx.user.update({
         where: { id: userId },
-        data: { totalPoints: { increment: effectValue } },
-      });
-      messageToUser = `Pháp Sư Meo Meo đã cộng cho bạn ${effectValue} điểm.`;
-    } else if (pet.type === "FAT") {
-      // Point Smash: 1 -> 70 points deduction
-      if (!targetUserId || targetUserId === userId) {
-        return res.status(400).json({ message: "Mục tiêu không hợp lệ" });
-      }
-      effectValue = Math.floor(Math.random() * 70) + 1;
-      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
-      if (!targetUser) return res.status(404).json({ message: "Không tìm thấy đối thủ" });
-
-      const newPoints = Math.max(0, targetUser.totalPoints - effectValue);
-      await prisma.user.update({
-        where: { id: targetUserId },
-        data: { totalPoints: newPoints },
+        data: { skillTokens: { decrement: 100 } }
       });
 
-      messageToUser = `Bạn đã dùng Meow Béo trừ ${effectValue} điểm của ${targetUser.name}.`;
-      messageToTarget = `Meow Béo của ${req.user.name} đã trừ ${effectValue} điểm của bạn.`;
-    } else if (pet.type === "MESSI") {
-      // Power Shot: 35% HP damage
-      if (!targetUserId || targetUserId === userId) {
-        return res.status(400).json({ message: "Mục tiêu không hợp lệ" });
-      }
-      const targetPet = await prisma.pet.findUnique({ where: { userId: targetUserId } });
-      if (!targetPet || targetPet.status === "DEAD") {
-        return res.status(400).json({ message: "Đối thủ không có pet hoặc pet đã chết" });
+      if (pet.type === "MAGE") {
+        // Lucky Score: 0 -> 45 points
+        effectValue = Math.floor(Math.random() * 46);
+        await tx.user.update({
+          where: { id: userId },
+          data: { totalPoints: { increment: effectValue } },
+        });
+        messageToUser = `Pháp Sư Meo Meo đã cộng cho bạn ${effectValue} điểm. (Tiêu tốn 100 Token)`;
+      } else if (pet.type === "FAT") {
+        // Point Smash: 1 -> 70 points deduction
+        if (!targetUserId || targetUserId === userId) {
+          throw new Error("Mục tiêu không hợp lệ");
+        }
+        effectValue = Math.floor(Math.random() * 70) + 1;
+        const targetUser = await tx.user.findUnique({ where: { id: targetUserId } });
+        if (!targetUser) throw new Error("Không tìm thấy đối thủ");
+
+        const newPoints = Math.max(0, targetUser.totalPoints - effectValue);
+        await tx.user.update({
+          where: { id: targetUserId },
+          data: { totalPoints: newPoints },
+        });
+
+        messageToUser = `Bạn đã dùng Meow Béo trừ ${effectValue} điểm của ${targetUser.name}. (Tiêu tốn 100 Token)`;
+        messageToTarget = `Meow Béo của ${req.user.name} đã trừ ${effectValue} điểm của bạn.`;
+      } else if (pet.type === "MESSI") {
+        // Power Shot: 35% HP damage
+        if (!targetUserId || targetUserId === userId) {
+          throw new Error("Mục tiêu không hợp lệ");
+        }
+        const targetPet = await tx.pet.findUnique({ where: { userId: targetUserId } });
+        if (!targetPet || targetPet.status === "DEAD") {
+          throw new Error("Đối thủ không có pet hoặc pet đã chết");
+        }
+
+        effectValue = Math.floor(targetPet.hp * 0.35);
+        const newHp = Math.max(0, targetPet.hp - effectValue);
+        const newStatus = newHp <= 0 ? "DEAD" : "ALIVE";
+
+        await tx.pet.update({
+          where: { userId: targetUserId },
+          data: { hp: newHp, status: newStatus },
+        });
+
+        const targetUser = await tx.user.findUnique({ where: { id: targetUserId } });
+        messageToUser = `Messi của bạn gây ${effectValue} sát thương lên pet của ${targetUser?.name}. (Tiêu tốn 100 Token)`;
+        messageToTarget = `Pet của bạn bị Messi của ${req.user.name} tấn công và mất ${effectValue} HP.`;
+        
+        if (newStatus === "DEAD") {
+          messageToTarget += " Pet của bạn đã chết!";
+        }
       }
 
-      effectValue = Math.floor(targetPet.hp * 0.35);
-      const newHp = Math.max(0, targetPet.hp - effectValue);
-      const newStatus = newHp <= 0 ? "DEAD" : "ALIVE";
-
-      await prisma.pet.update({
-        where: { userId: targetUserId },
-        data: { hp: newHp, status: newStatus },
+      // Update last used time
+      await tx.pet.update({
+        where: { id: pet.id },
+        data: { lastSkillUsedAt: now },
       });
 
-      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
-      messageToUser = `Messi của bạn gây ${effectValue} sát thương lên pet của ${targetUser?.name}.`;
-      messageToTarget = `Pet của bạn bị Messi của ${req.user.name} tấn công và mất ${effectValue} HP.`;
-      
-      if (newStatus === "DEAD") {
-        messageToTarget += " Pet của bạn đã chết!";
-      }
-    }
+      // Log skill
+      await tx.petSkillLog.create({
+        data: {
+          attackerUserId: userId,
+          targetUserId,
+          petType: pet.type,
+          skillName: pet.type === "MAGE" ? "Lucky Score" : pet.type === "FAT" ? "Point Smash" : "Power Shot",
+          effectValue,
+        },
+      });
 
-    // Update last used time
-    await prisma.pet.update({
-      where: { id: pet.id },
-      data: { lastSkillUsedAt: now },
+      // Create notifications
+      await tx.notification.create({
+        data: { userId, title: "Kỹ năng Pet", message: messageToUser },
+      });
+      if (messageToTarget && targetUserId) {
+        await tx.notification.create({
+          data: { userId: targetUserId, title: "Bị Pet tấn công", message: messageToTarget },
+        });
+      }
     });
-
-    // Log skill
-    await prisma.petSkillLog.create({
-      data: {
-        attackerUserId: userId,
-        targetUserId,
-        petType: pet.type,
-        skillName: pet.type === "MAGE" ? "Lucky Score" : pet.type === "FAT" ? "Point Smash" : "Power Shot",
-        effectValue,
-      },
-    });
-
-    // Create notifications
-    await prisma.notification.create({
-      data: { userId, title: "Kỹ năng Pet", message: messageToUser },
-    });
-    if (messageToTarget && targetUserId) {
-      await prisma.notification.create({
-        data: { userId: targetUserId, title: "Bị Pet tấn công", message: messageToTarget },
-      });
-    }
 
     res.json({ message: messageToUser, effectValue });
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi khi dùng kỹ năng" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message || "Lỗi khi dùng kỹ năng" });
   }
 };
 

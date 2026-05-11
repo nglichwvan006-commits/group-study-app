@@ -9,6 +9,7 @@ interface User {
   role: 'ADMIN' | 'MEMBER';
   avatarUrl?: string | null;
   totalPoints?: number;
+  skillTokens?: number;
   level?: number;
   badge?: string;
   bannedUntil?: string | null;

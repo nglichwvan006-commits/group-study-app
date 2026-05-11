@@ -195,7 +195,12 @@ Nhiệm vụ của bạn:
 
         await (tx as any).user.update({
           where: { id: submission.userId },
-          data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
+          data: { 
+            totalPoints: newPoints, 
+            level: newLevel, 
+            badge: newBadge,
+            skillTokens: { increment: 10 }
+          },
         });
 
         // Pet Revive Logic: Check if pet is DEAD and assignment is Medium/C++

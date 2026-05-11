@@ -14,6 +14,7 @@ import TargetSelector from '../components/Pet/TargetSelector';
 const PetGame: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, refreshUser } = useAuth();
   const [pet, setPet] = useState<any>(location.state?.pet || null);
   const [quizData, setQuizData] = useState<any>(null);
   const [loading, setLoading] = useState(!location.state?.pet);
@@ -53,6 +54,11 @@ const PetGame: React.FC = () => {
 
   const handleUseSkill = async (targetUserId?: string) => {
     if (!pet) return;
+
+    if (user && (user.skillTokens || 0) < 100) {
+      toast.error('Bạn không đủ 100 Token để thi triển kỹ năng!');
+      return;
+    }
     
     if (pet.type !== 'MAGE' && !targetUserId) {
       setShowTargetSelector(true);
@@ -68,6 +74,7 @@ const PetGame: React.FC = () => {
       // Update pet state (lastSkillUsedAt)
       setPet((prev: any) => ({ ...prev, lastSkillUsedAt: new Date().toISOString() }));
       setShowTargetSelector(false);
+      refreshUser(); // Update tokens in UI
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi dùng kỹ năng', { id: loadingToast });
     } finally {
@@ -127,11 +134,17 @@ const PetGame: React.FC = () => {
           >
             <ChevronLeft size={20} /> Quay lại Dashboard
           </button>
-          <div className="flex items-center gap-3 bg-white/5 px-6 py-2 rounded-full border border-white/10 shadow-lg">
-            <Award className="text-yellow-500" size={20} />
-            <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
-              PET GAME ALPHA
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 bg-yellow-500/10 px-4 py-2 rounded-xl border border-yellow-500/20">
+              <Zap size={18} className="text-yellow-500 fill-yellow-500" />
+              <span className="font-black text-yellow-500">{user?.skillTokens || 0} TOKENS</span>
+            </div>
+            <div className="flex items-center gap-3 bg-white/5 px-6 py-2 rounded-full border border-white/10 shadow-lg">
+              <Award className="text-yellow-500" size={20} />
+              <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+                PET GAME ALPHA
+              </span>
+            </div>
           </div>
         </div>
 
@@ -142,18 +155,17 @@ const PetGame: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <button
-                disabled={!canUseSkill}
                 onClick={() => handleUseSkill()}
                 className={`
                   p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3
-                  ${canUseSkill 
+                  ${pet.status === 'ALIVE' 
                     ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 border-indigo-400 shadow-xl shadow-indigo-600/30 hover:scale-[1.05] active:scale-95' 
                     : 'bg-white/5 border-white/5 text-slate-500 opacity-50 cursor-not-allowed'}
                 `}
               >
-                <Zap size={32} className={canUseSkill ? 'text-yellow-400 fill-yellow-400' : ''} />
+                <Zap size={32} className={pet.status === 'ALIVE' ? 'text-yellow-400 fill-yellow-400' : ''} />
                 <span className="font-black uppercase tracking-widest text-sm">Dùng Kỹ Năng</span>
-                {!canUseSkill && !isDead && <span className="text-[10px] opacity-60">Hồi chiêu: Ngày mai</span>}
+                <span className="text-[10px] font-bold opacity-80 px-2 py-0.5 bg-black/20 rounded-full text-yellow-400">100 TOKENS</span>
               </button>
 
               <button
@@ -201,6 +213,7 @@ const PetGame: React.FC = () => {
                   status: (prev.hp + (res.isCorrect ? 50 : -50)) <= 0 ? 'DEAD' : 'ALIVE'
                 }));
               }} 
+              onRefreshPet={fetchGameData}
             />
             
             <Mailbox />

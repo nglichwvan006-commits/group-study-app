@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import { DailyQuizService } from "../services/quiz.service";
 
 export const getTodayQuiz = async (req: any, res: Response) => {
   const today = new Date();
@@ -42,6 +43,45 @@ export const getTodayQuiz = async (req: any, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi khi lấy quiz" });
+  }
+};
+
+export const getQuickQuiz = async (req: any, res: Response) => {
+  try {
+    const quiz = await DailyQuizService.generateQuickQuiz();
+    res.json(quiz);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi tạo quiz nhanh từ AI" });
+  }
+};
+
+export const checkQuickAnswer = async (req: any, res: Response) => {
+  const { answer, correctAnswer } = req.body;
+  const userId = req.user.id;
+  const isCorrect = answer === correctAnswer;
+
+  try {
+    const pet = await prisma.pet.findUnique({ where: { userId } });
+    if (pet && pet.status === "ALIVE") {
+      const hpChange = isCorrect ? 30 : -30;
+      const newHp = Math.max(0, Math.min(pet.maxHp, pet.hp + hpChange));
+      const newStatus = newHp <= 0 ? "DEAD" : "ALIVE";
+
+      await prisma.pet.update({
+        where: { userId },
+        data: { hp: newHp, status: newStatus },
+      });
+
+      res.json({
+        isCorrect,
+        message: isCorrect ? "Chính xác! Pet đã được hồi 30 HP." : "Sai rồi! Pet bị trừ 30 HP.",
+        newHp
+      });
+    } else {
+      res.json({ isCorrect, message: isCorrect ? "Chính xác!" : "Sai rồi!" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi kiểm tra đáp án" });
   }
 };
 

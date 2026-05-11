@@ -9,13 +9,17 @@ import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard' | 'posts'>('users');
   const [users, setUsers] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+
+  // Post form
+  const [newPost, setNewPost] = useState({ content: '', imageUrl: '' });
+  const [isPosting, setIsPosting] = useState(false);
 
   // User form
   const [showAddMember, setShowAddMember] = useState(false);
@@ -318,6 +322,22 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPost.content.trim()) return;
+    setIsPosting(true);
+    const loadingToast = toast.loading('Đang đăng bài lên cộng đồng...');
+    try {
+      await api.post('/posts', newPost);
+      setNewPost({ content: '', imageUrl: '' });
+      toast.success('Đã đăng bài thành công và tự động ghim!', { id: loadingToast });
+    } catch (error) {
+      toast.error('Lỗi khi đăng bài', { id: loadingToast });
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   const NavItem = ({ id, icon: Icon, label }: { id: any, icon: any, label: string }) => (
     <button
       onClick={() => {
@@ -349,6 +369,7 @@ const AdminDashboard: React.FC = () => {
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavItem id="users" icon={UserIcon} label="Quản lý người dùng" />
           <NavItem id="assignments" icon={BookOpen} label="Hệ thống bài tập" />
+          <NavItem id="posts" icon={Plus} label="Đăng tin cộng đồng" />
           <NavItem id="leaderboard" icon={Trophy} label="Bảng xếp hạng" />
           <NavItem id="resources" icon={FileText} label="Kho tài liệu" />
           <NavItem id="chat" icon={MessageSquare} label="Phòng chat" />
@@ -375,6 +396,49 @@ const AdminDashboard: React.FC = () => {
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
               
+              {activeTab === 'posts' && (
+                <div className="max-w-3xl mx-auto space-y-6 text-left">
+                   <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Đăng tin cộng đồng</h2>
+                   <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+                      <form onSubmit={handleCreatePost} className="space-y-6">
+                         <div>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Nội dung bài viết</label>
+                            <textarea 
+                              required 
+                              placeholder="Thông báo: Ngày mai hệ thống sẽ bảo trì..." 
+                              className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm" 
+                              rows={8} 
+                              value={newPost.content} 
+                              onChange={(e) => setNewPost({...newPost, content: e.target.value})}
+                            ></textarea>
+                         </div>
+                         <div>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Đường dẫn ảnh (Tùy chọn)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://example.com/image.png" 
+                              className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm" 
+                              value={newPost.imageUrl} 
+                              onChange={(e) => setNewPost({...newPost, imageUrl: e.target.value})}
+                            />
+                         </div>
+                         <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-2">
+                               📌 Ghi chú: Bài viết của Admin sẽ tự động được ghim lên đầu bảng tin và hiển thị danh tính Admin.
+                            </p>
+                         </div>
+                         <button 
+                           type="submit" 
+                           disabled={isPosting || !newPost.content.trim()} 
+                           className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                         >
+                            {isPosting ? 'ĐANG XỬ LÝ...' : 'ĐĂNG BÀI NGAY'}
+                         </button>
+                      </form>
+                   </div>
+                </div>
+              )}
+
               {activeTab === 'users' && (
                 <div className="space-y-6 text-left">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

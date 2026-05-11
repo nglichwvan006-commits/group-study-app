@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Trash2, MessageSquare, Heart, Image as ImageIcon, User, X, ChevronLeft, Maximize2 } from 'lucide-react';
+import { Send, Trash2, MessageSquare, Heart, Image as ImageIcon, User, X, ChevronLeft, Maximize2, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
@@ -48,20 +48,34 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
     }
   };
 
+  const isAdminPost = post.user?.role === 'ADMIN';
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className={`bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border ${post.isPinned ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-100 dark:border-slate-800'}`}
+    >
       <div className="flex justify-between items-start mb-4">
-        <Link to={`/profile/${post.user?.id}`} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 font-black text-sm overflow-hidden">
-            {post.user?.avatarUrl ? (
+        <Link to={`/profile/${post.userId}`} className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl ${isAdminPost ? 'bg-indigo-600' : 'bg-indigo-50 dark:bg-indigo-900/20'} flex items-center justify-center text-white font-black text-sm overflow-hidden`}>
+            {isAdminPost ? (
+              <Shield size={20} />
+            ) : post.user?.avatarUrl ? (
               <img src={post.user.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
             ) : (
               post.user?.name?.charAt(0) || 'U'
             )}
           </div>
           <div>
-            <h4 className="font-bold text-sm hover:underline text-slate-900 dark:text-white text-left">{post.user?.name || 'Unknown'}</h4>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left">{post.user?.badge} • LV {post.user?.level}</p>
+            <div className="flex items-center gap-2">
+              <h4 className={`font-bold text-sm hover:underline text-left ${isAdminPost ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                {isAdminPost ? 'ADMIN' : (post.user?.name || 'Unknown')}
+              </h4>
+              {isAdminPost && <span className="bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-0.5"><Shield size={8}/> QUẢN TRỊ VIÊN</span>}
+              {post.isPinned && <span className="text-indigo-500 text-[8px] font-black uppercase flex items-center gap-0.5">📌 ĐÃ GHIM</span>}
+            </div>
+            {!isAdminPost && <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left">{post.user?.badge} • LV {post.user?.level}</p>}
           </div>
         </Link>
         {(post.userId === currentUser?.id || currentUser?.role === 'ADMIN') && onDelete && (

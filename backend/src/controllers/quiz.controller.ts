@@ -17,9 +17,22 @@ export const getTodayQuiz = async (req: any, res: Response) => {
     });
 
     if (!quiz) {
-      // If quiz not found, trigger generation (simplified for now)
-      // In production, this should be a cron job
-      return res.status(404).json({ message: "Chưa có quiz cho ngày hôm nay. Vui lòng quay lại sau!" });
+      // Auto-generate if not exists
+      await DailyQuizService.generateTodayQuiz();
+      
+      // Fetch again after generation
+      quiz = await prisma.dailyQuiz.findFirst({
+        where: {
+          quizDate: {
+            gte: today,
+            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+    }
+
+    if (!quiz) {
+      return res.status(500).json({ message: "Không thể tạo quiz hằng ngày. Vui lòng thử lại sau!" });
     }
 
     // Check if user already answered
@@ -43,45 +56,6 @@ export const getTodayQuiz = async (req: any, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi khi lấy quiz" });
-  }
-};
-
-export const getQuickQuiz = async (req: any, res: Response) => {
-  try {
-    const quiz = await DailyQuizService.generateQuickQuiz();
-    res.json(quiz);
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi khi tạo quiz nhanh từ AI" });
-  }
-};
-
-export const checkQuickAnswer = async (req: any, res: Response) => {
-  const { answer, correctAnswer } = req.body;
-  const userId = req.user.id;
-  const isCorrect = answer === correctAnswer;
-
-  try {
-    const pet = await prisma.pet.findUnique({ where: { userId } });
-    if (pet && pet.status === "ALIVE") {
-      const hpChange = isCorrect ? 30 : -30;
-      const newHp = Math.max(0, Math.min(pet.maxHp, pet.hp + hpChange));
-      const newStatus = newHp <= 0 ? "DEAD" : "ALIVE";
-
-      await prisma.pet.update({
-        where: { userId },
-        data: { hp: newHp, status: newStatus },
-      });
-
-      res.json({
-        isCorrect,
-        message: isCorrect ? "Chính xác! Pet đã được hồi 30 HP." : "Sai rồi! Pet bị trừ 30 HP.",
-        newHp
-      });
-    } else {
-      res.json({ isCorrect, message: isCorrect ? "Chính xác!" : "Sai rồi!" });
-    }
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi khi kiểm tra đáp án" });
   }
 };
 

@@ -290,7 +290,7 @@ const MemberDashboard: React.FC = () => {
           <NavItem id="leaderboard" icon={Trophy} label="Xếp hạng" />
           <NavItem id="notifications" icon={Bell} label="Thông báo" badgeCount={notifications.filter(n => !n.isRead).length} />
           <NavItem id="resources" icon={FileText} label="Tài liệu" />
-          <button onClick={() => navigate('/pet-game')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm group relative overflow-hidden">
+          <button onClick={() => navigate('/pet-game', { state: { pet } })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-all text-sm group relative overflow-hidden">
             <Sparkles size={18} className="text-amber-500" />
             <span>Pet Game</span>
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -337,7 +337,7 @@ const MemberDashboard: React.FC = () => {
                     <motion.div 
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      onClick={() => navigate('/pet-game')}
+                      onClick={() => navigate('/pet-game', { state: { pet } })}
                       className="bg-white/5 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-6 rounded-[2.5rem] flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-all group"
                     >
                       <div className="flex items-center gap-6">

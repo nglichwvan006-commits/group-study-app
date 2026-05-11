@@ -33,7 +33,17 @@ const DailyQuiz: React.FC<DailyQuizProps> = ({ quizData, onAnswered }) => {
     }
   };
 
-  if (!quiz) return null;
+  if (!quiz) {
+    return (
+      <div className="bg-white/5 backdrop-blur-md rounded-3xl p-10 border border-white/10 shadow-xl text-center">
+        <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mx-auto mb-4">
+          <HelpCircle size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Chưa có thử thách hôm nay</h3>
+        <p className="text-slate-400 text-sm italic">Admin đang biên soạn câu hỏi mới. Hãy quay lại sau nhé!</p>
+      </div>
+    );
+  }
 
   const labels = ['A', 'B', 'C', 'D'];
 

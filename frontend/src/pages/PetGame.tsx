@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, RotateCcw, ShieldAlert, Sparkles, ChevronLeft, Target, Award } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 
@@ -13,9 +13,10 @@ import TargetSelector from '../components/Pet/TargetSelector';
 
 const PetGame: React.FC = () => {
   const navigate = useNavigate();
-  const [pet, setPet] = useState<any>(null);
+  const location = useLocation();
+  const [pet, setPet] = useState<any>(location.state?.pet || null);
   const [quizData, setQuizData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!location.state?.pet);
   const [isAttacking, setIsAttacking] = useState(false);
   const [showTargetSelector, setShowTargetSelector] = useState(false);
 
@@ -24,22 +25,35 @@ const PetGame: React.FC = () => {
   }, []);
 
   const fetchGameData = async () => {
-    setLoading(true);
+    // If we already have pet from state, we can still fetch to sync, but don't show full screen loader
+    if (!pet) setLoading(true);
+    
     try {
-      const [petRes, quizRes] = await Promise.all([
-        api.get('/pets/me'),
-        api.get('/quizzes/today')
-      ]);
+      // Fetch pet independently
+      const petRes = await api.get('/pets/me');
       setPet(petRes.data);
-      setQuizData(quizRes.data);
-    } catch (error) {
-      console.error('Error fetching game data');
+      
+      // Fetch quiz independently
+      try {
+        const quizRes = await api.get('/quizzes/today');
+        setQuizData(quizRes.data);
+      } catch (quizError) {
+        console.warn('Daily quiz not found or error');
+        setQuizData(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching pet data');
+      if (error.response?.status !== 401) {
+        toast.error('Không thể tải dữ liệu Pet. Vui lòng kiểm tra kết nối.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleUseSkill = async (targetUserId?: string) => {
+    if (!pet) return;
+    
     if (pet.type !== 'MAGE' && !targetUserId) {
       setShowTargetSelector(true);
       return;
@@ -52,7 +66,7 @@ const PetGame: React.FC = () => {
       toast.success(response.data.message, { id: loadingToast, duration: 4000 });
       
       // Update pet state (lastSkillUsedAt)
-      setPet({ ...pet, lastSkillUsedAt: new Date().toISOString() });
+      setPet((prev: any) => ({ ...prev, lastSkillUsedAt: new Date().toISOString() }));
       setShowTargetSelector(false);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi dùng kỹ năng', { id: loadingToast });
@@ -72,7 +86,7 @@ const PetGame: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !pet) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-6">
         <motion.div 
@@ -108,7 +122,7 @@ const PetGame: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-12">
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-widest text-xs"
           >
             <ChevronLeft size={20} /> Quay lại Dashboard
@@ -177,7 +191,7 @@ const PetGame: React.FC = () => {
           {/* RIGHT COLUMN: Quiz & Mailbox */}
           <div className="lg:col-span-7 space-y-8">
             <DailyQuiz 
-              quizData={quizData} 
+              quizData={quizData || { quiz: null, answered: false, result: null }} 
               onAnswered={(res: any) => {
                 setQuizData({ ...quizData, answered: true, result: res });
                 // Update HP in pet UI

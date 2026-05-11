@@ -133,24 +133,34 @@ const PostItem: React.FC<{ post: any; onDelete?: (id: string) => void }> = ({ po
         {showComments && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-6 space-y-4 overflow-hidden">
             <div className="space-y-3">
-               {comments.map((c: any) => (
-                 <div key={c.id} className="flex gap-3 items-start">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-black text-indigo-600 overflow-hidden">
-                      {c.user?.avatarUrl ? (
-                        <img src={c.user.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
-                      ) : (
-                        c.user?.name?.charAt(0)
-                      )}
-                    </div>
-                    <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl relative text-left">
-                       <p className="text-[10px] font-black text-indigo-500 mb-1">{c.user?.name}</p>
-                       <p className="text-xs">{c.content}</p>
-                       {(c.userId === currentUser?.id || currentUser?.role === 'ADMIN') && (
-                         <button onClick={() => handleDeleteComment(c.id)} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500"><X size={10}/></button>
-                       )}
-                    </div>
-                 </div>
-               ))}
+               {comments.map((c: any) => {
+                 const isCommentAdmin = c.user?.role === 'ADMIN';
+                 return (
+                   <div key={c.id} className="flex gap-3 items-start">
+                      <div className={`w-7 h-7 rounded-lg ${isCommentAdmin ? 'bg-indigo-600' : 'bg-indigo-50 dark:bg-indigo-900/40'} flex items-center justify-center text-[10px] font-black text-white overflow-hidden`}>
+                        {isCommentAdmin ? (
+                          <Shield size={14} />
+                        ) : c.user?.avatarUrl ? (
+                          <img src={c.user.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
+                        ) : (
+                          c.user?.name?.charAt(0)
+                        )}
+                      </div>
+                      <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl relative text-left">
+                         <div className="flex items-center gap-1.5 mb-1">
+                            <p className={`text-[10px] font-black ${isCommentAdmin ? 'text-indigo-600 dark:text-indigo-400' : 'text-indigo-500'}`}>
+                              {isCommentAdmin ? 'ADMIN' : c.user?.name}
+                            </p>
+                            {isCommentAdmin && <Shield size={8} className="text-indigo-600" />}
+                         </div>
+                         <p className="text-xs">{c.content}</p>
+                         {(c.userId === currentUser?.id || currentUser?.role === 'ADMIN') && (
+                           <button onClick={() => handleDeleteComment(c.id)} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500"><X size={10}/></button>
+                         )}
+                      </div>
+                   </div>
+                 );
+               })}
                {comments.length === 0 && <p className="text-xs text-slate-400 italic text-center py-2">Hãy là người đầu tiên bình luận!</p>}
             </div>
             <form onSubmit={handleComment} className="flex gap-2">
@@ -255,6 +265,8 @@ const Feed: React.FC = () => {
     }
   };
 
+  const isAdmin = currentUser?.role === 'ADMIN';
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] pb-20">
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 p-4">
@@ -272,11 +284,17 @@ const Feed: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800">
            <form onSubmit={handlePost} className="space-y-4">
               <div className="flex gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0 shadow-inner font-black overflow-hidden">
-                    {currentUser?.avatarUrl ? <img src={currentUser.avatarUrl} className="w-full h-full object-cover" /> : currentUser?.name?.charAt(0)}
+                 <div className={`w-12 h-12 rounded-2xl ${isAdmin ? 'bg-indigo-600' : 'bg-indigo-100 dark:bg-indigo-900/40'} flex items-center justify-center text-white shrink-0 shadow-inner font-black overflow-hidden`}>
+                    {isAdmin ? (
+                      <Shield size={24} />
+                    ) : currentUser?.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} className="w-full h-full object-cover" />
+                    ) : (
+                      currentUser?.name?.charAt(0)
+                    )}
                  </div>
                  <textarea 
-                   placeholder={`${currentUser?.name || 'Bạn'} ơi, hôm nay có gì mới?`} 
+                   placeholder={isAdmin ? "Đăng thông báo cộng đồng..." : `${currentUser?.name || 'Bạn'} ơi, hôm nay có gì mới?`} 
                    className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-900 dark:text-white"
                    rows={3}
                    value={newPost}

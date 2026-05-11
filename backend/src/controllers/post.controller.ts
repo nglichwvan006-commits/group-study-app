@@ -29,7 +29,7 @@ export const getFeed = async (req: any, res: Response) => {
             content: true,
             createdAt: true,
             userId: true,
-            user: { select: { id: true, name: true, avatarUrl: true } }
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } }
           },
           orderBy: { createdAt: "asc" }
         },
@@ -71,7 +71,7 @@ export const createPost = async (req: any, res: Response) => {
       },
       include: {
         user: {
-          select: { id: true, name: true, badge: true, level: true, role: true }
+          select: { id: true, name: true, badge: true, level: true, avatarUrl: true, role: true }
         },
         comments: true,
         likes: true
@@ -144,7 +144,7 @@ export const createComment = async (req: any, res: Response) => {
         userId
       },
       include: {
-        user: { select: { id: true, name: true } }
+        user: { select: { id: true, name: true, avatarUrl: true, role: true } }
       }
     });
     res.status(201).json(comment);

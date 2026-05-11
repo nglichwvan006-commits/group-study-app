@@ -9,7 +9,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
         role: { not: "ADMIN" }
       },
       orderBy: { totalPoints: "desc" },
-      select: { id: true, name: true, totalPoints: true, level: true, badge: true, avatarUrl: true },
+      select: { id: true, name: true, totalPoints: true, level: true, badge: true, avatarUrl: true, pet: true },
       take: 100,
     });
     res.json(users);

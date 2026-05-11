@@ -11,7 +11,7 @@ export const searchUsers = async (req: any, res: Response) => {
           { email: { contains: String(q), mode: "insensitive" } },
         ],
       },
-      select: { id: true, name: true, badge: true, level: true, totalPoints: true, avatarUrl: true },
+      select: { id: true, name: true, badge: true, level: true, totalPoints: true, avatarUrl: true, pet: true },
       take: 20,
     });
     res.json(users);
@@ -35,6 +35,7 @@ export const getProfile = async (req: any, res: Response) => {
         totalPoints: true,
         level: true,
         badge: true,
+        pet: true,
         age: true,
         school: true,
         className: true,

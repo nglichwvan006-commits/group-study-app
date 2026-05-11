@@ -496,6 +496,12 @@ const MemberDashboard: React.FC = () => {
                                 <p className="font-black text-base mb-1 truncate px-2 group-hover:text-indigo-600 transition-colors">{leaderboard[1].name}</p>
                                 <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[1].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
                                 <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[1].badge} • Cấp {leaderboard[1].level}</p>
+                                {leaderboard[1].pet && (
+                                   <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700 shadow-sm">
+                                      <span className="text-sm">{leaderboard[1].pet.type === 'MAGE' ? '🧙‍♂️' : leaderboard[1].pet.type === 'FAT' ? '🍔' : '⚽'}</span>
+                                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{leaderboard[1].pet.name}</span>
+                                   </div>
+                                )}
                              </Link>
                           </motion.div>
                         )}
@@ -508,6 +514,12 @@ const MemberDashboard: React.FC = () => {
                                 <p className="font-black text-lg mb-1 truncate px-2 relative z-10 group-hover:text-amber-600 transition-colors">{leaderboard[0].name}</p>
                                 <p className="text-amber-600 dark:text-amber-400 font-black text-2xl relative z-10">{leaderboard[0].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
                                 <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mt-2 relative z-10">{leaderboard[0].badge} • Cấp {leaderboard[0].level}</p>
+                                {leaderboard[0].pet && (
+                                   <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 rounded-full border border-amber-400/30 relative z-10">
+                                      <span className="text-base">{leaderboard[0].pet.type === 'MAGE' ? '🧙‍♂️' : leaderboard[0].pet.type === 'FAT' ? '🍔' : '⚽'}</span>
+                                      <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 truncate max-w-[120px]">{leaderboard[0].pet.name}</span>
+                                   </div>
+                                )}
                              </Link>
                           </motion.div>
                         )}
@@ -520,6 +532,12 @@ const MemberDashboard: React.FC = () => {
                                 <p className="font-black text-base mb-1 truncate px-2 group-hover:text-orange-700 transition-colors">{leaderboard[2].name}</p>
                                 <p className="text-indigo-600 dark:text-indigo-400 font-black text-xl">{leaderboard[2].totalPoints} <span className="text-[8px] opacity-50 uppercase">Điểm</span></p>
                                 <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{leaderboard[2].badge} • Cấp {leaderboard[2].level}</p>
+                                {leaderboard[2].pet && (
+                                   <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700 shadow-sm">
+                                      <span className="text-sm">{leaderboard[2].pet.type === 'MAGE' ? '🧙‍♂️' : leaderboard[2].pet.type === 'FAT' ? '🍔' : '⚽'}</span>
+                                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 truncate max-w-[90px]">{leaderboard[2].pet.name}</span>
+                                   </div>
+                                )}
                              </Link>
                           </motion.div>
                         )}
@@ -536,7 +554,14 @@ const MemberDashboard: React.FC = () => {
                                 </div>
                                 <div className="text-left">
                                    <p className={`font-black truncate w-32 sm:w-auto group-hover:text-indigo-500 ${u.id === user?.id ? 'group-hover:text-white' : ''}`}>{u.name}</p>
-                                   <p className={`text-[10px] font-bold uppercase ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge} • Cấp {u.level}</p>
+                                   <div className="flex items-center gap-2">
+                                      <p className={`text-[10px] font-bold uppercase ${u.id === user?.id ? 'text-indigo-200' : 'text-slate-400'}`}>{u.badge} • Cấp {u.level}</p>
+                                      {u.pet && (
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${u.id === user?.id ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'} flex items-center gap-1`}>
+                                          {u.pet.type === 'MAGE' ? '🧙‍♂️' : u.pet.type === 'FAT' ? '🍔' : '⚽'} {u.pet.name}
+                                        </span>
+                                      )}
+                                   </div>
                                 </div>
                              </div>
                              <p className="font-black text-xl">{u.totalPoints}</p>

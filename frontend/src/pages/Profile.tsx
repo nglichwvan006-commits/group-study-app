@@ -160,7 +160,15 @@ const Profile: React.FC = () => {
           <div className="pt-20 pb-10 px-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
              <div>
                 <h1 className="text-4xl font-black tracking-tight">{profile.name}</h1>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1 text-left">{profile.badge} • Cấp bậc {profile.level}</p>
+                <div className="flex items-center gap-3 mt-1">
+                   <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{profile.badge} • Cấp bậc {profile.level}</p>
+                   {profile.pet && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-full border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+                         <span className="text-sm">{profile.pet.type === 'MAGE' ? '🧙‍♂️' : profile.pet.type === 'FAT' ? '🍔' : '⚽'}</span>
+                         <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">{profile.pet.name}</span>
+                      </div>
+                   )}
+                </div>
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-slate-400 font-medium">
                    <span className="flex items-center gap-1.5"><Calendar size={14}/> Tham gia {new Date(profile.createdAt).toLocaleDateString()}</span>
                    <span className="flex items-center gap-1.5"><Book size={14}/> {profile.submissions?.length || 0} bài tập hoàn thành</span>

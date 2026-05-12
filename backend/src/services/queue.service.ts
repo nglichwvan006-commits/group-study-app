@@ -2,7 +2,13 @@ import { Queue, Worker, Job } from 'bullmq';
 import { ProblemJudgeService } from './problem-judge.service';
 import IORedis from 'ioredis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+let REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+// Xử lý trường hợp URL bị bao bởi dấu ngoặc kép hoặc bị encode (do Render/Upstash copy paste)
+REDIS_URL = REDIS_URL.replace(/^["']|["']$/g, ''); 
+if (REDIS_URL.includes('%22')) {
+    REDIS_URL = decodeURIComponent(REDIS_URL).replace(/^["']|["']$/g, '');
+}
 
 console.log(`[Redis] Attempting to connect with URL: ${REDIS_URL.includes('@') ? REDIS_URL.split('@').pop() : REDIS_URL}`);
 

@@ -4,6 +4,8 @@ import IORedis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
+console.log(`[Redis] Attempting to connect with URL: ${REDIS_URL.includes('@') ? REDIS_URL.split('@').pop() : REDIS_URL}`);
+
 const getRedisConfig = () => ({
     maxRetriesPerRequest: null,
     enableReadyCheck: false,

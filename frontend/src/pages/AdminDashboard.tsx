@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock, Key, Search } from 'lucide-react';
+import { User as UserIcon, Shield, BookOpen, MessageSquare, LogOut, Trash2, MicOff, Mic, Plus, FileText, Sun, Moon, Menu, X, Trophy, RefreshCw, RotateCcw, Ban, Sparkles, Clock, Key, Search, Settings as SettingsIcon } from 'lucide-react';
 import Chat from '../components/Chat';
 import ResourceLibrary from '../components/ResourceLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,13 +9,17 @@ import toast from 'react-hot-toast';
 
 const AdminDashboard: React.FC = () => {
   const { logout, user, darkMode, toggleDarkMode } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard' | 'posts' | 'support'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'assignments' | 'chat' | 'resources' | 'leaderboard' | 'posts' | 'support' | 'settings'>('users');
   const [users, setUsers] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+
+  // Settings State
+  const [settings, setSettings] = useState<any>({});
+  const [isUpdatingSetting, setIsUpdatingSetting] = useState(false);
 
   // Post form
   const [newPost, setNewPost] = useState({ content: '', imageUrl: '' });
@@ -50,6 +54,7 @@ const AdminDashboard: React.FC = () => {
     fetchLeaderboard();
     fetchAssignments();
     fetchSupportMessages();
+    fetchSettings();
   }, []);
 
   const fetchSupportMessages = async () => {
@@ -58,6 +63,28 @@ const AdminDashboard: React.FC = () => {
       setSupportMessages(res.data);
     } catch (error) {
       console.error('Error fetching support messages');
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get('/admin/settings');
+      setSettings(res.data);
+    } catch (error) {
+      console.error('Error fetching settings');
+    }
+  };
+
+  const handleUpdateSetting = async (key: string, value: any) => {
+    setIsUpdatingSetting(true);
+    try {
+      await api.patch('/admin/settings', { key, value });
+      setSettings((prev: any) => ({ ...prev, [key]: String(value) }));
+      toast.success('Đã cập nhật cài đặt hệ thống!');
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật cài đặt');
+    } finally {
+      setIsUpdatingSetting(false);
     }
   };
 
@@ -150,6 +177,7 @@ const AdminDashboard: React.FC = () => {
     fetchUsers();
     fetchLeaderboard();
     fetchAssignments();
+    fetchSettings();
     toast.success('Đã làm mới dữ liệu!');
   };
 
@@ -401,6 +429,7 @@ const AdminDashboard: React.FC = () => {
           <NavItem id="resources" icon={FileText} label="Kho tài liệu" />
           <NavItem id="chat" icon={MessageSquare} label="Phòng chat" />
           <NavItem id="support" icon={Shield} label="Hỗ trợ khách" />
+          <NavItem id="settings" icon={SettingsIcon} label="Cài đặt hệ thống" />
         </nav>
         <div className="p-4 m-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 space-y-2">
           <button onClick={toggleDarkMode} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-all font-bold text-xs">{darkMode ? <><Sun size={16} className="text-amber-500" /> Sáng</> : <><Moon size={16} className="text-indigo-500" /> Tối</>}</button>
@@ -788,6 +817,51 @@ const AdminDashboard: React.FC = () => {
                            </div>
                          )}
                       </div>
+                   </div>
+                </div>
+              )}
+
+              {activeTab === 'settings' && (
+                <div className="max-w-4xl mx-auto space-y-8 text-left">
+                   <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Cài đặt hệ thống</h2>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800">
+                         <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+                               <Sparkles size={24} />
+                            </div>
+                            <div className="flex-1">
+                               <h3 className="font-bold text-lg">Gợi ý Code mẫu (AI)</h3>
+                               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                  Khi bật, AI sẽ tự động tạo code mẫu tối ưu đính kèm vào thông báo gửi về hòm thư của người dùng sau khi chấm điểm.
+                               </p>
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl mt-6">
+                            <span className="text-xs font-black uppercase text-slate-400">Trạng thái: <span className={settings.enable_code_suggestions === 'false' ? 'text-red-500' : 'text-emerald-500'}>{settings.enable_code_suggestions === 'false' ? 'ĐANG TẮT' : 'ĐANG BẬT'}</span></span>
+                            <button 
+                              disabled={isUpdatingSetting}
+                              onClick={() => handleUpdateSetting('enable_code_suggestions', settings.enable_code_suggestions === 'false' ? 'true' : 'false')}
+                              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${settings.enable_code_suggestions === 'false' ? 'bg-slate-300 dark:bg-slate-700' : 'bg-indigo-600'}`}
+                            >
+                               <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${settings.enable_code_suggestions === 'false' ? 'translate-x-1' : 'translate-x-6'}`} />
+                            </button>
+                         </div>
+                      </div>
+
+                      <div className="bg-white/50 dark:bg-slate-900/50 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center opacity-60">
+                         <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
+                            <Plus size={24} />
+                         </div>
+                         <p className="text-xs font-bold text-slate-400 italic">Thêm cài đặt mới trong tương lai...</p>
+                      </div>
+                   </div>
+
+                   <div className="p-6 bg-amber-50 dark:bg-amber-500/5 rounded-3xl border border-amber-100 dark:border-amber-500/10">
+                      <p className="text-[11px] text-amber-700 dark:text-amber-500 font-medium leading-relaxed">
+                         ⚠️ <strong>Lưu ý quan trọng:</strong> Các thay đổi trong phần Cài đặt hệ thống sẽ có hiệu lực ngay lập tức cho toàn bộ người dùng trên nền tảng. Hãy cân nhắc kỹ trước khi thay đổi các cấu hình quan trọng.
+                      </p>
                    </div>
                 </div>
               )}

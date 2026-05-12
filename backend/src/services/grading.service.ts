@@ -262,7 +262,12 @@ Nhiệm vụ của bạn:
            msg += `\n🎁 Bạn được thưởng **${tokenReward} Token** vì hoàn thành tốt bài tập!`;
         }
         msg += `\n\nNhận xét: ${result.feedback}`;
-        if (result.suggestedCode) {
+
+        // Check if code suggestions are enabled globally
+        const suggestionSetting = await tx.globalSetting.findUnique({ where: { key: "enable_code_suggestions" } });
+        const suggestionsEnabled = suggestionSetting ? suggestionSetting.value === "true" : true; // Default to true if not set
+
+        if (result.suggestedCode && suggestionsEnabled) {
            msg += `\n\n💡 Gợi ý code mẫu:\n\`\`\`${submission.assignment.language}\n${result.suggestedCode}\n\`\`\``;
         }
 

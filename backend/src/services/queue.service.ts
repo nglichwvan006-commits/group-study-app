@@ -2,7 +2,9 @@ import { Queue, Worker, Job } from 'bullmq';
 import { ProblemJudgeService } from './problem-judge.service';
 import IORedis from 'ioredis';
 
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+});
 
 // Tạo Queue
 export const judgeQueue = new Queue('judge-queue', { connection: redisConnection });

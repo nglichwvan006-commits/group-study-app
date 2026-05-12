@@ -337,7 +337,10 @@ import * as https from 'https';
 
 async function callGemini(prompt: string): Promise<string> {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set in environment variables");
+    if (!GEMINI_API_KEY) {
+        console.error("❌ GEMINI_API_KEY is missing in environment variables!");
+        throw new Error("GEMINI_API_KEY is not set");
+    }
 
     const data = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -345,13 +348,13 @@ async function callGemini(prompt: string): Promise<string> {
             temperature: 0.2,
             topK: 1,
             topP: 1,
-            max_output_tokens: 2048
+            maxOutputTokens: 2048
         }
     });
 
     const options = {
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

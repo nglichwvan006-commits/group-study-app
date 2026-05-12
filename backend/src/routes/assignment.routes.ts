@@ -8,7 +8,8 @@ import {
   updateAssignment, 
   deleteAssignment, 
   bulkDeleteAssignments,
-  bulkToggleHideAssignments
+  bulkToggleHideAssignments,
+  generateAllTestCases
 } from "../controllers/assignment.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
 import { Role } from "../types/auth";
@@ -19,6 +20,7 @@ router.use(authenticate as any);
 
 router.get("/", getAssignments as any);
 router.get("/my-submissions", getMySubmissions as any);
+router.post("/generate-all-testcases", authorize([Role.ADMIN]) as any, generateAllTestCases as any);
 router.post("/", authorize([Role.ADMIN]) as any, createAssignment as any);
 router.post("/bulk-delete", authorize([Role.ADMIN]) as any, bulkDeleteAssignments as any);
 router.post("/bulk-hide", authorize([Role.ADMIN]) as any, bulkToggleHideAssignments as any);

@@ -129,6 +129,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleGenerateAllTestCases = async () => {
+    if (!window.confirm("Hệ thống sẽ quét tất cả các bài tập chưa có Test Case và sử dụng AI để tự động tạo 5 Test Case cho mỗi bài. Quá trình này sẽ chạy ngầm và có thể mất vài phút. Bạn có muốn tiếp tục?")) return;
+    
+    const loadingToast = toast.loading('Đang khởi tạo lệnh tạo Test Case bằng AI...');
+    try {
+      const res = await api.post('/assignments/generate-all-testcases');
+      toast.success(res.data.message || 'Đã gửi lệnh tạo Test Case thành công!', { id: loadingToast, duration: 5000 });
+      // Reload after 5 seconds to show initial progress or just let user manually refresh
+      setTimeout(() => fetchAssignments(), 5000);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi khởi tạo quá trình tạo Test Case', { id: loadingToast });
+    }
+  };
+
   const handleSelectAllAssignments = () => {
     if (selectedAssignments.length === assignments.length) {
       setSelectedAssignments([]);
@@ -628,6 +642,7 @@ const AdminDashboard: React.FC = () => {
                           <button onClick={() => handleBulkHide(false)} className="flex-1 sm:flex-none bg-indigo-500 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold text-xs"><Mic size={16} /> HIỆN</button>
                         </>
                       )}
+                      <button onClick={handleGenerateAllTestCases} className="flex-1 sm:flex-none bg-emerald-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold text-xs hover:bg-emerald-700"><Sparkles size={18} /> TẠO TEST CASE AI</button>
                       <button onClick={() => setShowAddAssignment(!showAddAssignment)} className="flex-1 sm:flex-none bg-indigo-600 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg font-bold text-xs hover:bg-indigo-700 transition-all"><Plus size={20} /> TẠO BÀI TẬP</button>
                     </div>
                   </div>

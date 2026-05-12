@@ -332,3 +332,113 @@ export const deleteAssignment = async (req: any, res: Response) => {
     res.status(500).json({ message: "Error deleting assignment" });
   }
 };
+
+import * as https from 'https';
+
+async function callGemini(prompt: string): Promise<string> {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set in environment variables");
+
+    const data = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+            temperature: 0.2,
+            topK: 1,
+            topP: 1,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+        }
+    });
+
+    const options = {
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(data)
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', (d) => body += d);
+            res.on('end', () => {
+                if (res.statusCode && res.statusCode !== 200) {
+                    console.error(`Google API Error (Status ${res.statusCode}):`, body.substring(0, 200));
+                    return reject(new Error(`API returned status ${res.statusCode}`));
+                }
+                try {
+                    const json = JSON.parse(body);
+                    if (json.error) {
+                        reject(new Error(json.error.message));
+                    } else {
+                        let text = json.candidates[0].content.parts[0].text;
+                        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                        resolve(text);
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+
+        req.on('error', (e) => reject(e));
+        req.write(data);
+        req.end();
+    });
+}
+
+export const generateAllTestCases = async (req: any, res: Response) => {
+    try {
+        const assignments = await prisma.assignment.findMany({
+            where: { testCases: { none: {} } }
+        });
+
+        if (assignments.length === 0) {
+            return res.json({ message: "Không tìm thấy bài tập nào cần tạo test case." });
+        }
+
+        res.json({ message: `Đang bắt đầu tạo test case cho ${assignments.length} bài tập trong nền. Quá trình này có thể mất vài phút.` });
+
+        // Chạy ngầm
+        (async () => {
+            for (const assignment of assignments) {
+                try {
+                    const prompt = `Bạn là một chuyên gia thiết kế bài tập lập trình. Hãy tạo 5 test case cho bài tập sau đây.
+Tiêu đề: ${assignment.title}
+Mô tả: ${assignment.description}
+Ngôn ngữ: ${assignment.language}
+
+Yêu cầu:
+1. Các test case phải bao quát: cơ bản, biên (edge cases).
+2. Định dạng mảng JSON: [{ "input": "chuỗi", "expectedOutput": "chuỗi", "isHidden": false, "weight": 20 }]
+3. Chỉ trả về JSON. Input và Output phải là chuỗi (string).`;
+
+                    const aiResponse = await callGemini(prompt);
+                    const testCases = JSON.parse(aiResponse);
+
+                    if (Array.isArray(testCases) && testCases.length > 0) {
+                        await prisma.testCase.createMany({
+                            data: testCases.map((tc, index) => ({
+                                assignmentId: assignment.id,
+                                input: String(tc.input),
+                                expectedOutput: String(tc.expectedOutput),
+                                isHidden: tc.isHidden || false,
+                                weight: tc.weight || 20,
+                                order: index
+                            }))
+                        });
+                        console.log(`Successfully generated ${testCases.length} test cases for assignment ${assignment.id}`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to generate test case for ${assignment.title}:`, error);
+                }
+            }
+        })();
+    } catch (error) {
+        console.error("Error initiating test case generation:", error);
+        res.status(500).json({ message: "Lỗi khi bắt đầu tạo test case." });
+    }
+};

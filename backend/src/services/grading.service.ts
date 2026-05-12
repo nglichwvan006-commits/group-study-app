@@ -31,6 +31,11 @@ Tiêu chí:
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        console.error("[AI Difficulty] OpenRouter Error:", data);
+        return "Trung bình";
+      }
+
       const text = data.choices?.[0]?.message?.content || "Trung bình";
       const difficulties = ["Dễ", "Trung bình", "Khá", "Khó", "Master"];
       const match = difficulties.find(d => text.includes(d));
@@ -133,10 +138,11 @@ ${submission.content}
 
 Nhiệm vụ của bạn:
 1. Đóng vai chuyên gia lập trình chấm điểm bài làm này.
-2. Trả về kết quả duy nhất ở định dạng JSON: {"score": number, "feedback": "string tiếng Việt", "suggestedCode": "string"}.
-3. Điểm số (score) phải là số nguyên từ 0 đến ${submission.assignment.maxScore}.
-4. Nhận xét (feedback) cần mang tính xây dựng, chỉ ra chỗ tốt và chỗ cần cải thiện.
-5. "suggestedCode": Cung cấp mã nguồn mẫu chính xác và tối ưu nhất bằng ngôn ngữ ${submission.assignment.language} cho bài tập này.`;
+2. Trả về kết quả DUY NHẤT ở định dạng JSON, không có văn bản giải thích nào khác.
+3. Định dạng JSON: {"score": number, "feedback": "string tiếng Việt", "suggestedCode": "string"}.
+4. Điểm số (score) phải là số nguyên từ 0 đến ${submission.assignment.maxScore}.
+5. Nhận xét (feedback) cần mang tính xây dựng, chỉ ra chỗ tốt và chỗ cần cải thiện.
+6. "suggestedCode": Cung cấp mã nguồn mẫu chính xác và tối ưu nhất bằng ngôn ngữ ${submission.assignment.language} cho bài tập này.`;
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -153,9 +159,30 @@ Nhiệm vụ của bạn:
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        console.error("[AI Grading] OpenRouter API Error:", data);
+        throw new Error(`OpenRouter API error: ${response.statusText}`);
+      }
+
       const aiText = data.choices?.[0]?.message?.content || "";
-      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-      const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 0, feedback: "AI không thể phân tích bài làm.", suggestedCode: "" };
+      console.log("[AI Grading] AI Response Text:", aiText);
+
+      let result;
+      try {
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          // Clean up common AI artifacts like markdown blocks
+          let jsonStr = jsonMatch[0].trim();
+          result = JSON.parse(jsonStr);
+        } else {
+          throw new Error("No JSON found in AI response");
+        }
+      } catch (parseError) {
+        console.error("[AI Grading] Failed to parse AI JSON:", parseError);
+        console.log("[AI Grading] Raw AI text that failed:", aiText);
+        result = { score: 0, feedback: "AI không thể phân tích bài làm do lỗi định dạng kết quả.", suggestedCode: "" };
+      }
 
       const finalScore = Math.max(0, Math.min(Number(result.score) || 0, submission.assignment.maxScore));
 

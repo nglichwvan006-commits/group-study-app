@@ -345,8 +345,7 @@ async function callGemini(prompt: string): Promise<string> {
             temperature: 0.2,
             topK: 1,
             topP: 1,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json",
+            max_output_tokens: 2048
         }
     });
 

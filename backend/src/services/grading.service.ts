@@ -25,7 +25,7 @@ Tiêu chí:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "google/gemini-flash-1.5-8b:free",
+          model: "inclusion-ai/ring-2.6-1t:free",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -80,7 +80,7 @@ Yêu cầu:
           "X-Title": "Group Study App"
         },
         body: JSON.stringify({
-          model: "google/gemini-flash-1.5-8b:free",
+          model: "inclusion-ai/ring-2.6-1t:free",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -153,7 +153,7 @@ Nhiệm vụ của bạn:
           "X-Title": "Group Study App"
         },
         body: JSON.stringify({
-          model: "google/gemini-flash-1.5-8b:free",
+          model: "inclusion-ai/ring-2.6-1t:free",
           messages: [{ role: "user", content: prompt }]
         })
       });

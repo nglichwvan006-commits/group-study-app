@@ -45,7 +45,7 @@ Trả về DUY NHẤT định dạng JSON:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "google/gemini-flash-1.5-8b:free",
+          model: "inclusion-ai/ring-2.6-1t:free",
           messages: [{ role: "user", content: prompt }]
         })
       });

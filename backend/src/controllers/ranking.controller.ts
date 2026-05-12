@@ -1,9 +1,17 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { cache } from "../services/cache.service";
 
 export const getLeaderboard = async (req: Request, res: Response) => {
   try {
+    const cacheKey = "leaderboard_top_100";
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     const users = await (prisma.user as any).findMany({
       where: {
         role: { not: "ADMIN" }
@@ -12,6 +20,8 @@ export const getLeaderboard = async (req: Request, res: Response) => {
       select: { id: true, name: true, totalPoints: true, level: true, badge: true, avatarUrl: true, pet: true },
       take: 100,
     });
+    
+    cache.set(cacheKey, users);
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching leaderboard" });

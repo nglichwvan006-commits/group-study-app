@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "./utils/passport";
+import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
 import assignmentRoutes from "./routes/assignment.routes";
@@ -16,6 +17,17 @@ import quizRoutes from "./routes/quiz.routes";
 import mailboxRoutes from "./routes/mailbox.routes";
 
 const app = express();
+
+// Rate limiting setup
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minutes
+  max: 150, // Limit each IP to 150 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
 
 console.log("CORS Allowed Origin:", process.env.FRONTEND_URL || "Not Set (Defaulting to localhost)");
 

@@ -1,26 +1,16 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
-import { DailyQuizService } from "../services/quiz.service";
+import { cache } from "../services/cache.service";
 
 export const getTodayQuiz = async (req: any, res: Response) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   try {
-    let quiz = await prisma.dailyQuiz.findFirst({
-      where: {
-        quizDate: {
-          gte: today,
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-        },
-      },
-    });
+    const cacheKey = `daily_quiz_${today.getTime()}`;
+    let quiz: any = cache.get(cacheKey);
 
     if (!quiz) {
-      // Auto-generate if not exists
-      await DailyQuizService.generateTodayQuiz();
-      
-      // Fetch again after generation
       quiz = await prisma.dailyQuiz.findFirst({
         where: {
           quizDate: {
@@ -29,10 +19,13 @@ export const getTodayQuiz = async (req: any, res: Response) => {
           },
         },
       });
+      if (quiz) {
+        cache.set(cacheKey, quiz);
+      }
     }
 
     if (!quiz) {
-      return res.status(500).json({ message: "Không thể tạo quiz hằng ngày. Vui lòng thử lại sau!" });
+      return res.status(404).json({ message: "Hôm nay chưa có thử thách trắc nghiệm nào." });
     }
 
     // Check if user already answered
@@ -49,12 +42,13 @@ export const getTodayQuiz = async (req: any, res: Response) => {
       quiz: {
         id: quiz.id,
         question: quiz.question,
-        options: JSON.parse(quiz.optionsJson),
+        options: typeof quiz.optionsJson === 'string' ? JSON.parse(quiz.optionsJson) : quiz.optionsJson,
       },
       answered: !!answer,
       result: answer ? { isCorrect: answer.isCorrect, correctAnswer: quiz.correctAnswer, explanation: quiz.explanation } : null,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Lỗi khi lấy quiz" });
   }
 };

@@ -41,8 +41,6 @@ const AdminDashboard: React.FC = () => {
   const [showAddAssignment, setShowAddAssignment] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', maxScore: 100 });
-  const [isAISmartMode, setIsAISmartMode] = useState(false);
-  const [rawAssignmentText, setRawAssignmentText] = useState('');
   const [selectedAssignments, setSelectedAssignments] = useState<string[]>([]);
 
   // Support State
@@ -301,27 +299,17 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const loadingToast = toast.loading(
-      isAISmartMode 
-        ? 'AI đang phân tích và tạo bài tập...' 
-        : (editingAssignment ? 'Đang cập nhật bài tập...' : 'Đang gửi bài tập cho AI phân loại...')
-    );
+    const loadingToast = toast.loading(editingAssignment ? 'Đang cập nhật bài tập...' : 'Đang đăng bài tập...');
 
     try {
-      if (isAISmartMode) {
-        await api.post('/assignments/bulk-ai', { rawText: rawAssignmentText });
-        toast.success('Đã tạo hàng loạt bài tập thành công!', { id: loadingToast });
-        setRawAssignmentText('');
+      if (editingAssignment) {
+        await api.patch(`/assignments/${editingAssignment.id}`, newAssignment);
+        toast.success('Đã cập nhật bài tập!', { id: loadingToast });
       } else {
-        if (editingAssignment) {
-          await api.patch(`/assignments/${editingAssignment.id}`, newAssignment);
-          toast.success('Đã cập nhật bài tập!', { id: loadingToast });
-        } else {
-          await api.post('/assignments', newAssignment);
-          toast.success('Bài tập đã được AI phân loại và đăng!', { id: loadingToast });
-        }
-        setNewAssignment({ title: '', description: '', deadline: '', maxScore: 100 });
+        await api.post('/assignments', newAssignment);
+        toast.success('Bài tập đã được đăng thành công!', { id: loadingToast });
       }
+      setNewAssignment({ title: '', description: '', deadline: '', maxScore: 100 });
       fetchAssignments();
       setShowAddAssignment(false);
       setEditingAssignment(null);
@@ -602,29 +590,9 @@ const AdminDashboard: React.FC = () => {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 mb-6 overflow-hidden">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                            <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="text-indigo-500"/> {editingAssignment ? 'Cập nhật bài tập' : 'Tạo thử thách mới'}</h3>
-                           {!editingAssignment && (
-                             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                               <button onClick={() => setIsAISmartMode(false)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAISmartMode ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}>THỦ CÔNG</button>
-                               <button onClick={() => setIsAISmartMode(true)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isAISmartMode ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-500'}`}>AI THÔNG MINH</button>
-                             </div>
-                           )}
                         </div>
 
                         <form onSubmit={handleCreateAssignment} className="space-y-5">
-                           {isAISmartMode && !editingAssignment ? (
-                             <div className="space-y-4">
-                                <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                                   <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium leading-relaxed">
-                                      ✨ <strong>Mẹo:</strong> Bạn có thể dán một danh sách nội dung bài tập, giáo trình hoặc mô tả thô. AI sẽ tự động tách thành từng bài tập riêng biệt, phân loại độ khó và tính điểm (Dễ: 50, TB: 70, Khá: 100, Khó: 150, Master: 500).
-                                   </p>
-                                </div>
-                                <div>
-                                   <label className="block text-xs font-black text-slate-400 uppercase mb-2">Dán nội dung bài tập tại đây</label>
-                                   <textarea required placeholder="Ví dụ: 1. Viết hàm tính tổng 2 số. 2. Tạo thuật toán sắp xếp mảng..." className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium" rows={10} value={rawAssignmentText} onChange={(e) => setRawAssignmentText(e.target.value)}></textarea>
-                                </div>
-                             </div>
-                           ) : (
-                             <>
                                <div>
                                   <label className="block text-xs font-black text-slate-400 uppercase mb-2">Tiêu đề bài tập</label>
                                   <input type="text" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.title} onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})} />
@@ -643,12 +611,10 @@ const AdminDashboard: React.FC = () => {
                                      <input type="datetime-local" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.deadline} onChange={(e) => setNewAssignment({...newAssignment, deadline: e.target.value})} />
                                   </div>
                                </div>
-                             </>
-                           )}
                            <div className="flex justify-end gap-3 pt-4">
                              <button type="button" onClick={() => { setShowAddAssignment(false); setEditingAssignment(null); }} className="px-8 py-3 text-slate-500 font-bold">HỦY</button>
                              <button type="submit" className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                               {isAISmartMode && !editingAssignment ? 'XÁC NHẬN TẠO VỚI AI' : (editingAssignment ? 'CẬP NHẬT' : 'ĐĂNG BÀI TẬP')}
+                               {editingAssignment ? 'CẬP NHẬT' : 'ĐĂNG BÀI TẬP'}
                              </button>
                            </div>
                         </form>
@@ -826,30 +792,6 @@ const AdminDashboard: React.FC = () => {
                    <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Cài đặt hệ thống</h2>
                    
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800">
-                         <div className="flex items-start justify-between gap-4 mb-4">
-                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
-                               <Sparkles size={24} />
-                            </div>
-                            <div className="flex-1">
-                               <h3 className="font-bold text-lg">Gợi ý Code mẫu (AI)</h3>
-                               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                  Khi bật, AI sẽ tự động tạo code mẫu tối ưu đính kèm vào thông báo gửi về hòm thư của người dùng sau khi chấm điểm.
-                               </p>
-                            </div>
-                         </div>
-                         <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl mt-6">
-                            <span className="text-xs font-black uppercase text-slate-400">Trạng thái: <span className={settings.enable_code_suggestions === 'false' ? 'text-red-500' : 'text-emerald-500'}>{settings.enable_code_suggestions === 'false' ? 'ĐANG TẮT' : 'ĐANG BẬT'}</span></span>
-                            <button 
-                              disabled={isUpdatingSetting}
-                              onClick={() => handleUpdateSetting('enable_code_suggestions', settings.enable_code_suggestions === 'false' ? 'true' : 'false')}
-                              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${settings.enable_code_suggestions === 'false' ? 'bg-slate-300 dark:bg-slate-700' : 'bg-indigo-600'}`}
-                            >
-                               <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${settings.enable_code_suggestions === 'false' ? 'translate-x-1' : 'translate-x-6'}`} />
-                            </button>
-                         </div>
-                      </div>
-
                       <div className="bg-white/50 dark:bg-slate-900/50 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center opacity-60">
                          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
                             <Plus size={24} />

@@ -43,7 +43,17 @@ const MemberDashboard: React.FC = () => {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
   const [pet, setPet] = useState<any>(null);
+  const [visibleHints, setVisibleHints] = useState<{ [key: string]: boolean }>({});
   const editorRef = useRef<HTMLDivElement>(null);
+
+  // Reset hints when assignment changes
+  useEffect(() => {
+    setVisibleHints({});
+  }, [selectedAssignment]);
+
+  const toggleHint = (key: string) => {
+    setVisibleHints(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Support State
   const [showSupport, setShowSupport] = useState(false);
@@ -214,30 +224,43 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
+  const [lastResult, setLastResult] = useState<any>(null);
+
   const handleSubmitAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAssignment) return;
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Đang gửi bài làm...');
+    setLastResult(null);
+    const loadingToast = toast.loading('Đang chấm bài...');
     try {
-      await api.post('/assignments/submit', {
+      const response = await api.post('/assignments/submit', {
         assignmentId: selectedAssignment.id,
         content: submissionContent,
+        language: selectedLanguage
       });
-      toast.success('Đã nộp bài thành công! Vui lòng tải lại sau vài giây để xem điểm AI.', { duration: 5000 });
-      setSubmissionContent('');
-      setSelectedAssignment(null);
-      setTimeout(() => {
-        fetchMySubmissions();
-        fetchLeaderboard();
-        fetchNotifications();
-        refreshUser();
-      }, 3000);
+      
+      const result = response.data;
+      setLastResult(result);
+      
+      if (result.status === 'ACCEPTED') {
+        toast.success('CHÚC MỪNG! Bạn đã vượt qua tất cả thử thách!', { id: loadingToast, duration: 5000 });
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } else {
+        toast.error(`Kết quả: ${result.status}`, { id: loadingToast });
+      }
+
+      fetchMySubmissions();
+      fetchLeaderboard();
+      fetchNotifications();
+      refreshUser();
     } catch (error: any) {
-      toast.error('Lỗi: ' + (error.response?.data?.message || error.message));
+      toast.error('Lỗi: ' + (error.response?.data?.message || error.message), { id: loadingToast });
     } finally {
       setIsSubmitting(false);
-      toast.dismiss(loadingToast);
     }
   };
 
@@ -442,7 +465,20 @@ const MemberDashboard: React.FC = () => {
                                    <span className="text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{a.language}</span>
                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${a.difficulty === 'Master' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{a.difficulty}</span>
                                 </div>
-                                {mySub && <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${mySub.status === 'GRADED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{mySub.status}</span>}
+                                {mySub && (
+                                  <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${
+                                    mySub.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' : 
+                                    mySub.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 
+                                    'bg-rose-100 text-rose-700'
+                                  }`}>
+                                    {mySub.status === 'TIME_LIMIT_EXCEEDED' ? 'TLE' : 
+                                     mySub.status === 'MEMORY_LIMIT_EXCEEDED' ? 'MLE' : 
+                                     mySub.status === 'COMPILE_ERROR' ? 'CE' : 
+                                     mySub.status === 'RUNTIME_ERROR' ? 'RE' : 
+                                     mySub.status === 'WRONG_ANSWER' ? 'WA' : 
+                                     mySub.status}
+                                  </span>
+                                )}
                               </div>
                               <h3 className="text-lg font-extrabold line-clamp-1 group-hover:text-indigo-600 transition-colors">{a.title}</h3>
                               <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
@@ -472,37 +508,143 @@ const MemberDashboard: React.FC = () => {
                             </div>
                             <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-sm mb-6 whitespace-pre-wrap">{selectedAssignment.description}</div>
 
+                            {selectedAssignment && (
+                              <div className="flex flex-wrap gap-2 mb-6">
+                                <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase">Giới hạn: {selectedAssignment.timeLimit}ms</span>
+                                <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase">Bộ nhớ: {selectedAssignment.memoryLimit}MB</span>
+                                <span className="px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[10px] font-black uppercase">Độ phức tạp: {selectedAssignment.complexity || 'O(n)'}</span>
+                              </div>
+                            )}
+
                             {(() => {
-                              const sub = mySubmissions.find(s => s.assignmentId === selectedAssignment.id);
-                              if (sub?.status === 'GRADED') {
-                                return (
-                                  <div className="mb-8 p-6 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/20">
-                                    <div className="flex justify-between items-center mb-4 text-[10px] font-black uppercase tracking-widest opacity-80">Kết quả AI</div>
-                                    <div className="flex items-baseline gap-2 mb-3">
-                                       <span className="text-5xl font-black">{sub.score}</span>
-                                       <span className="text-lg font-bold opacity-60">/ {selectedAssignment.maxScore} pts</span>
+                              const sub = lastResult || mySubmissions.find(s => s.assignmentId === selectedAssignment.id);
+                              if (!sub || sub.status === 'PENDING') return null;
+
+                              const getStatusColor = (status: string) => {
+                                switch (status) {
+                                  case 'ACCEPTED': return 'bg-emerald-600';
+                                  case 'WRONG_ANSWER': return 'bg-rose-600';
+                                  case 'COMPILE_ERROR': return 'bg-amber-600';
+                                  case 'TIME_LIMIT_EXCEEDED': return 'bg-orange-600';
+                                  case 'MEMORY_LIMIT_EXCEEDED': return 'bg-orange-600';
+                                  case 'RUNTIME_ERROR': return 'bg-red-600';
+                                  default: return 'bg-slate-600';
+                                }
+                              };
+
+                              return (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 overflow-hidden rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-900">
+                                  <div className={`p-6 text-white ${getStatusColor(sub.status)} flex justify-between items-center`}>
+                                    <div>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Kết quả hệ thống</p>
+                                      <h4 className="text-2xl font-black mt-1">{sub.status}</h4>
                                     </div>
-                                    <p className="text-sm italic opacity-90 leading-relaxed">"{sub.feedback}"</p>
+                                    <div className="text-right">
+                                      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Điểm số</p>
+                                      <p className="text-2xl font-black mt-1">{sub.score} <span className="text-sm opacity-60">pts</span></p>
+                                    </div>
                                   </div>
-                                );
-                              }
-                              return null;
+
+                                  <div className="p-6 bg-slate-50/50 dark:bg-slate-800/30 grid grid-cols-2 sm:grid-cols-4 gap-4 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Thời gian</p>
+                                      <p className="text-sm font-black text-indigo-600">{sub.runtime || 0} ms</p>
+                                    </div>
+                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Bộ nhớ</p>
+                                      <p className="text-sm font-black text-indigo-600">{(sub.memory / 1024).toFixed(1) || 0} MB</p>
+                                    </div>
+                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tests Passed</p>
+                                      <p className="text-sm font-black text-indigo-600">{sub.passedTests ?? sub.results?.filter((r: any) => r.status === 'AC').length ?? 0} / {sub.totalTests ?? sub.results?.length ?? 0}</p>
+                                    </div>
+                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Ngôn ngữ</p>
+                                      <p className="text-sm font-black text-indigo-600 uppercase">{sub.language || selectedLanguage}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="p-6">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Phản hồi hệ thống</p>
+                                    <div className="bg-slate-900 rounded-2xl p-6 font-mono text-sm border border-slate-800 shadow-inner">
+                                       <pre className="text-indigo-300 whitespace-pre-wrap leading-relaxed">
+                                         {sub.feedback || 'Không có phản hồi cụ thể.'}
+                                       </pre>
+                                    </div>
+                                    
+                                    <div className="mt-6">
+                                      <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Chi tiết Test Cases</p>
+                                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                                        {(sub.results || sub.details || []).map((res: any, idx: number) => (
+                                          <div key={idx} title={`Test ${idx + 1}: ${res.status}`} className={`h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white ${res.status === 'AC' ? 'bg-emerald-500' : 'bg-rose-500'} transition-transform hover:scale-110 cursor-help`}>
+                                            {idx + 1}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
                             })()}
+
+                            <div className="mb-8 space-y-4">
+                              <div className="flex flex-wrap gap-3">
+                                {['hint1', 'hint2', 'hint3', 'solutionOutline'].map((key) => {
+                                  if (!selectedAssignment[key]) return null;
+                                  const labels: any = { hint1: 'Gợi ý 1', hint2: 'Gợi ý 2', hint3: 'Gợi ý 3', solutionOutline: 'Hướng dẫn giải' };
+                                  return (
+                                    <button 
+                                      key={key}
+                                      onClick={() => toggleHint(key)}
+                                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${visibleHints[key] ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-400'}`}
+                                    >
+                                      {key === 'solutionOutline' ? <Sparkles size={14} /> : <Zap size={14} />}
+                                      {labels[key]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              <AnimatePresence>
+                                {Object.entries(visibleHints).map(([key, isVisible]) => (
+                                  isVisible && selectedAssignment[key] && (
+                                    <motion.div 
+                                      key={key}
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className={`p-5 rounded-2xl border ${key === 'solutionOutline' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-400'} text-sm whitespace-pre-wrap shadow-inner`}>
+                                        <p className="font-black text-[10px] uppercase mb-2 opacity-60 flex items-center gap-2">
+                                          {key === 'solutionOutline' ? 'Cấu trúc lời giải tối ưu' : `Nội dung ${key.replace('hint', 'Gợi ý ')}`}
+                                        </p>
+                                        {selectedAssignment[key]}
+                                      </div>
+                                    </motion.div>
+                                  )
+                                ))}
+                              </AnimatePresence>
+                            </div>
 
                             <form onSubmit={handleSubmitAssignment} className="space-y-6">
                               <div className="flex flex-col gap-4">
                                 <div className="flex justify-between items-center">
-                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn ngôn ngữ gõ</label>
-                                   <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className="w-40 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-                                      <option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="cpp">C++</option><option value="java">Java</option><option value="html">HTML</option><option value="css">CSS</option><option value="sql">SQL</option><option value="php">PHP</option>
+                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn ngôn ngữ lập trình</label>
+                                   <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className="w-48 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                      <option value="cpp">C++ (GCC 11)</option>
+                                      <option value="python">Python (3.10)</option>
+                                      <option value="java">Java (OpenJDK 17)</option>
+                                      <option value="csharp">C# ( .NET 8.0)</option>
                                    </select>
                                 </div>
-                                <div className="h-[450px] border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-inner">
-                                  <Editor height="100%" language={selectedLanguage} theme={darkMode ? "vs-dark" : "light"} value={submissionContent} onChange={(val) => setSubmissionContent(val || '')} options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, fontFamily: 'Fira Code, monospace', suggestOnTriggerCharacters: true, wordWrap: "on" }} />
+                                <div className="h-[500px] border-2 border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl relative group">
+                                  <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
+                                  <Editor height="100%" language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage === 'python' ? 'python' : selectedLanguage === 'java' ? 'java' : 'csharp'} theme={darkMode ? "vs-dark" : "light"} value={submissionContent} onChange={(val) => setSubmissionContent(val || '')} options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, fontFamily: 'Fira Code, monospace', padding: { top: 20 }, smoothScrolling: true, cursorBlinking: "expand" }} />
                                 </div>
                               </div>
-                              <button type="submit" disabled={isSubmitting} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-3xl flex items-center justify-center gap-3 transition-all shadow-lg disabled:opacity-50 transform hover:scale-[1.01] active:scale-95">
-                                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Send size={18} /> NỘP BÀI AI</>}
+                              <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black py-5 rounded-[2rem] flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.01] active:scale-95 text-sm tracking-widest">
+                                {isSubmitting ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Zap size={18} className="fill-white" /> KIỂM TRA CODE VÀ NỘP BÀI</>}
                               </button>
                             </form>
                           </motion.div>

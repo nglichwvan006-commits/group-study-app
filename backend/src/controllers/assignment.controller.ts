@@ -1,16 +1,26 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { gradeSubmissionAsync, classifyDifficultyAsync, bulkGenerateAssignmentsAsync } from "../services/grading.service";
+import { ProblemJudgeService } from "../services/problem-judge.service";
+import { cache } from "../services/cache.service";
 
 export const getAssignments = async (req: any, res: Response) => {
   const userRole = req.user?.role;
+  const cacheKey = `assignments_${userRole}`;
+
   try {
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     const assignments = await prisma.assignment.findMany({
       where: userRole === "ADMIN" ? {} : { isHidden: false },
       orderBy: { createdAt: "desc" },
       include: { creator: { select: { name: true } } },
     });
+
+    cache.set(cacheKey, assignments);
     res.json(assignments);
   } catch (error) {
     res.status(500).json({ message: "Error fetching assignments" });
@@ -18,90 +28,34 @@ export const getAssignments = async (req: any, res: Response) => {
 };
 
 export const createAssignment = async (req: any, res: Response) => {
-  const { title, description, deadline, maxScore } = req.body;
+  const { title, description, deadline, maxScore, difficulty } = req.body;
   const creatorId = req.user?.id;
 
   if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    // 1. Ask AI to classify difficulty
-    const difficulty = await classifyDifficultyAsync(title, description);
+    const finalDifficulty = difficulty || "Trung bình";
 
-    // 2. Create assignment
     const assignment = await prisma.assignment.create({
       data: {
         title,
         description,
         deadline: new Date(deadline),
-        language: "auto", // Default or detect automatically later
+        language: "cpp", 
         maxScore: maxScore ? parseInt(maxScore) : 100,
-        difficulty,
+        difficulty: finalDifficulty,
         creatorId,
         isHidden: false,
       },
     });
+
+    // Clear cache
+    cache.del("assignments_ADMIN");
+    cache.del("assignments_MEMBER");
+
     res.status(201).json(assignment);
   } catch (error) {
     res.status(500).json({ message: "Error creating assignment" });
-  }
-};
-
-export const bulkCreateAssignmentsAI = async (req: any, res: Response) => {
-  const { rawText } = req.body;
-  const creatorId = req.user?.id;
-
-  if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
-  if (!rawText) return res.status(400).json({ message: "Raw text is required" });
-
-  try {
-    // 1. Use AI to parse the text into assignments
-    const aiAssignments = await bulkGenerateAssignmentsAsync(rawText);
-
-    if (!aiAssignments || aiAssignments.length === 0) {
-      return res.status(422).json({ message: "AI could not parse any assignments from the provided text." });
-    }
-
-    const pointsMap: { [key: string]: number } = {
-      "Dễ": 50,
-      "Trung bình": 70,
-      "Khá": 100,
-      "Khó": 150,
-      "Master": 500
-    };
-
-    // 2. Create assignments in database
-    const createdAssignments = await Promise.all(
-      aiAssignments.map((a: any) => {
-        const difficulty = a.difficulty || "Trung bình";
-        const maxScore = pointsMap[difficulty] || 70;
-        // Default deadline: 1 year from now as per "không cần nhập hạn nộp"
-        const deadline = new Date();
-        deadline.setFullYear(deadline.getFullYear() + 1);
-
-        return prisma.assignment.create({
-          data: {
-            title: a.title,
-            description: a.description,
-            difficulty: difficulty,
-            maxScore: maxScore,
-            deadline: deadline,
-            creatorId: creatorId,
-            language: "auto",
-            isHidden: false,
-            rubric: "Tự động chấm điểm bởi AI dựa trên độ chính xác và chất lượng mã nguồn."
-          }
-        });
-      })
-    );
-
-    res.status(201).json({
-      message: `Successfully created ${createdAssignments.length} assignments using AI.`,
-      count: createdAssignments.length,
-      assignments: createdAssignments
-    });
-  } catch (error) {
-    console.error("[Bulk AI Controller] Error:", error);
-    res.status(500).json({ message: "Error processing assignments with AI" });
   }
 };
 
@@ -149,6 +103,10 @@ export const bulkDeleteAssignments = async (req: any, res: Response) => {
       }
     });
 
+    cache.del("assignments_ADMIN");
+    cache.del("assignments_MEMBER");
+    cache.del("leaderboard_top_100");
+
     res.json({ message: `Successfully deleted ${ids.length} assignments and updated users' XP.` });
   } catch (error) {
     res.status(500).json({ message: "Error during bulk delete" });
@@ -164,35 +122,50 @@ export const bulkToggleHideAssignments = async (req: any, res: Response) => {
       where: { id: { in: ids } },
       data: { isHidden: isHidden }
     });
+    
+    cache.del("assignments_ADMIN");
+    cache.del("assignments_MEMBER");
+    
     res.json({ message: `Successfully ${isHidden ? 'hidden' : 'shown'} ${ids.length} assignments.` });
   } catch (error) {
     res.status(500).json({ message: "Error during bulk hide/show" });
   }
 };
 
+import { judgeQueue } from "../services/queue.service";
+
 export const submitAssignment = async (req: any, res: Response) => {
-  const { assignmentId, content } = req.body;
+  const { assignmentId, content, language } = req.body;
   const userId = req.user?.id;
 
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
+  if (!assignmentId || !content || !language) {
+    return res.status(400).json({ message: "Missing required fields: assignmentId, content, or language" });
+  }
 
   try {
+    // 1. Tạo bản ghi Submission với trạng thái QUEUED
     const submission = await (prisma as any).submission.create({
       data: {
         content,
         userId,
         assignmentId,
-        status: "PENDING"
+        language: language.toLowerCase(),
+        status: "QUEUED"
       },
     });
     
-    setTimeout(() => {
-      gradeSubmissionAsync(submission.id);
-    }, 0);
+    // 2. Đẩy vào BullMQ thay vì chạy đồng bộ
+    await judgeQueue.add('judge-submission', { submissionId: submission.id });
 
-    res.status(201).json(submission);
-  } catch (error) {
-    res.status(500).json({ message: "Error submitting assignment" });
+    res.status(201).json({
+      submissionId: submission.id,
+      status: "QUEUED",
+      message: "Submission is queued for judging."
+    });
+  } catch (error: any) {
+    console.error("[Submit Controller] Error:", error);
+    res.status(500).json({ message: "Error queuing submission: " + error.message });
   }
 };
 
@@ -227,68 +200,6 @@ export const getMySubmissions = async (req: any, res: Response) => {
   }
 };
 
-export const submitAIResult = async (req: any, res: Response) => {
-  const { id } = req.params;
-  const { score, feedback } = req.body;
-  const userId = req.user?.id;
-
-  try {
-    const submission = await (prisma as any).submission.findUnique({
-      where: { id: String(id), userId },
-      include: { assignment: true }
-    });
-
-    if (!submission) return res.status(404).json({ message: "Submission not found" });
-    if (submission.status === "GRADED") return res.status(400).json({ message: "Already graded" });
-
-    const clampedScore = Math.max(0, Math.min(score, submission.assignment.maxScore));
-
-    await prisma.$transaction(async (tx) => {
-      await (tx as any).submission.update({
-        where: { id: String(id) },
-        data: {
-          score: clampedScore,
-          feedback: feedback,
-          status: "GRADED",
-          gradedAt: new Date(),
-        },
-      });
-
-      // Recalculate full XP for this user automatically
-      const allUserSubmissions = await (tx as any).submission.findMany({
-        where: { userId, status: "GRADED" },
-        select: { assignmentId: true, score: true }
-      });
-
-      const bestScores: { [key: string]: number } = {};
-      allUserSubmissions.forEach((s: any) => {
-        if (!bestScores[s.assignmentId] || (s.score || 0) > bestScores[s.assignmentId]) {
-          bestScores[s.assignmentId] = s.score || 0;
-        }
-      });
-
-      const newPoints = Object.values(bestScores).reduce((a: any, b: any) => Number(a) + Number(b), 0);
-      const newLevel = Math.floor(newPoints / 2000) + 1;
-      
-      let newBadge = "Bronze";
-      if (newPoints >= 10000) newBadge = "Master";
-      else if (newPoints >= 5000) newBadge = "Diamond";
-      else if (newPoints >= 3000) newBadge = "Platinum";
-      else if (newPoints >= 1500) newBadge = "Gold";
-      else if (newPoints >= 500) newBadge = "Silver";
-
-      await (tx as any).user.update({
-        where: { id: userId },
-        data: { totalPoints: newPoints, level: newLevel, badge: newBadge },
-      });
-    });
-
-    res.json({ message: "AI score saved successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error saving AI result" });
-  }
-};
-
 export const updateAssignment = async (req: any, res: Response) => {
   const { id } = req.params;
   const { title, description, deadline, maxScore } = req.body;
@@ -303,6 +214,10 @@ export const updateAssignment = async (req: any, res: Response) => {
         maxScore: maxScore ? parseInt(maxScore) : undefined,
       },
     });
+    
+    cache.del("assignments_ADMIN");
+    cache.del("assignments_MEMBER");
+
     res.json(assignment);
   } catch (error) {
     res.status(500).json({ message: "Error updating assignment" });
@@ -359,6 +274,10 @@ export const deleteAssignment = async (req: any, res: Response) => {
         });
       }
     });
+
+    cache.del("assignments_ADMIN");
+    cache.del("assignments_MEMBER");
+    cache.del("leaderboard_top_100"); // Clearing leaderboard as points changed
 
     res.json({ message: "Assignment deleted and users' XP automatically synchronized" });
   } catch (error) {

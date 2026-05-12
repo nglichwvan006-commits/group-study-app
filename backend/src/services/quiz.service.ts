@@ -45,7 +45,7 @@ Trả về DUY NHẤT định dạng JSON:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-chat",
+          model: "google/gemini-2.0-flash-lite-preview-02-05:free",
           messages: [{ role: "user", content: prompt }]
         })
       });

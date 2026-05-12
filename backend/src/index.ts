@@ -1,10 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import http from "http";
 import app from "./app";
 import { setupSocket } from "./utils/socket";
 import { startJudgeWorker } from "./services/queue.service";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const port = process.env.PORT || 5000;
 const server = http.createServer(app);

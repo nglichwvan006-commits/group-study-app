@@ -7,6 +7,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const getRedisConfig = () => ({
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
+    ...(REDIS_URL.startsWith('rediss') ? { tls: { rejectUnauthorized: false } } : {})
 });
 
 // Mỗi instance (Queue, Worker) nên có một connection riêng nếu dùng ioredis instance

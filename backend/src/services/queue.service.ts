@@ -2,15 +2,22 @@ import { Queue, Worker, Job } from 'bullmq';
 import { ProblemJudgeService } from './problem-judge.service';
 import IORedis from 'ioredis';
 
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+const getRedisConfig = () => ({
     maxRetriesPerRequest: null,
+    enableReadyCheck: false,
 });
 
-// Tạo Queue
-export const judgeQueue = new Queue('judge-queue', { connection: redisConnection });
+// Mỗi instance (Queue, Worker) nên có một connection riêng nếu dùng ioredis instance
+export const judgeQueue = new Queue('judge-queue', { 
+    connection: new IORedis(REDIS_URL, getRedisConfig()) 
+});
 
 // Cấu hình Worker
 export const startJudgeWorker = () => {
+    console.log(`[BullMQ] Initializing Worker with Redis: ${REDIS_URL.split('@').pop()} (maxRetriesPerRequest: null)`);
+    
     const worker = new Worker(
         'judge-queue',
         async (job: Job) => {
@@ -25,8 +32,8 @@ export const startJudgeWorker = () => {
             }
         },
         { 
-            connection: redisConnection,
-            concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10) // Scale worker
+            connection: new IORedis(REDIS_URL, getRedisConfig()),
+            concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10)
         }
     );
 

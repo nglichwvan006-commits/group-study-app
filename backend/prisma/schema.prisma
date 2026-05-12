@@ -161,7 +161,7 @@ model Assignment {
   id          String       @id @default(uuid())
   title       String
   description String
-  deadline    DateTime
+  deadline    DateTime?
   
   // Coding features
   language    String       @default("javascript")

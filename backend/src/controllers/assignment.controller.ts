@@ -28,7 +28,7 @@ export const getAssignments = async (req: any, res: Response) => {
 };
 
 export const createAssignment = async (req: any, res: Response) => {
-  const { title, description, deadline, maxScore, difficulty } = req.body;
+  const { title, description, deadline, maxScore, difficulty, language, testCases, timeLimit, memoryLimit, complexity } = req.body;
   const creatorId = req.user?.id;
 
   if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
@@ -40,13 +40,26 @@ export const createAssignment = async (req: any, res: Response) => {
       data: {
         title,
         description,
-        deadline: new Date(deadline),
-        language: "cpp", 
+        deadline: deadline ? new Date(deadline) : null,
+        language: language || "javascript", 
         maxScore: maxScore ? parseInt(maxScore) : 100,
         difficulty: finalDifficulty,
         creatorId,
         isHidden: false,
+        timeLimit: timeLimit ? parseInt(timeLimit) : 2000,
+        memoryLimit: memoryLimit ? parseInt(memoryLimit) : 128,
+        complexity: complexity || "O(n)",
+        testCases: {
+          create: testCases?.map((tc: any, index: number) => ({
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden || false,
+            weight: tc.weight || 10,
+            order: index
+          }))
+        }
       },
+      include: { testCases: true }
     });
 
     // Clear cache
@@ -55,6 +68,7 @@ export const createAssignment = async (req: any, res: Response) => {
 
     res.status(201).json(assignment);
   } catch (error) {
+    console.error("Error creating assignment:", error);
     res.status(500).json({ message: "Error creating assignment" });
   }
 };
@@ -202,17 +216,49 @@ export const getMySubmissions = async (req: any, res: Response) => {
 
 export const updateAssignment = async (req: any, res: Response) => {
   const { id } = req.params;
-  const { title, description, deadline, maxScore } = req.body;
+  const { title, description, deadline, maxScore, difficulty, language, testCases, timeLimit, memoryLimit, complexity } = req.body;
 
   try {
-    const assignment = await prisma.assignment.update({
-      where: { id: String(id) },
-      data: {
-        title,
-        description,
-        deadline: deadline ? new Date(deadline) : undefined,
-        maxScore: maxScore ? parseInt(maxScore) : undefined,
-      },
+    const assignment = await prisma.$transaction(async (tx) => {
+      // 1. Cập nhật thông tin cơ bản
+      const updated = await tx.assignment.update({
+        where: { id: String(id) },
+        data: {
+          title,
+          description,
+          deadline: deadline ? new Date(deadline) : null,
+          maxScore: maxScore ? parseInt(maxScore) : undefined,
+          difficulty,
+          language,
+          timeLimit: timeLimit ? parseInt(timeLimit) : undefined,
+          memoryLimit: memoryLimit ? parseInt(memoryLimit) : undefined,
+          complexity,
+        },
+      });
+
+      // 2. Cập nhật Test Cases nếu có gửi lên
+      if (testCases && Array.isArray(testCases)) {
+        // Xóa các test case cũ
+        await tx.testCase.deleteMany({
+          where: { assignmentId: String(id) }
+        });
+
+        // Tạo lại bộ test case mới
+        if (testCases.length > 0) {
+          await tx.testCase.createMany({
+            data: testCases.map((tc: any, index: number) => ({
+              assignmentId: String(id),
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              isHidden: tc.isHidden || false,
+              weight: tc.weight || 10,
+              order: index
+            }))
+          });
+        }
+      }
+
+      return updated;
     });
     
     cache.del("assignments_ADMIN");
@@ -220,6 +266,7 @@ export const updateAssignment = async (req: any, res: Response) => {
 
     res.json(assignment);
   } catch (error) {
+    console.error("Error updating assignment:", error);
     res.status(500).json({ message: "Error updating assignment" });
   }
 };

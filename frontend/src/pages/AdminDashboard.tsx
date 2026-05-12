@@ -40,8 +40,38 @@ const AdminDashboard: React.FC = () => {
   // Assignment form
   const [showAddAssignment, setShowAddAssignment] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
-  const [newAssignment, setNewAssignment] = useState({ title: '', description: '', deadline: '', maxScore: 100 });
+  const [newAssignment, setNewAssignment] = useState({ 
+    title: '', 
+    description: '', 
+    deadline: '', 
+    maxScore: 100,
+    difficulty: 'Trung bình',
+    language: 'javascript',
+    timeLimit: 2000,
+    memoryLimit: 128,
+    complexity: 'O(n)',
+    testCases: [] as any[]
+  });
   const [selectedAssignments, setSelectedAssignments] = useState<string[]>([]);
+
+  const handleAddTestCase = () => {
+    setNewAssignment({
+      ...newAssignment,
+      testCases: [...newAssignment.testCases, { input: '', expectedOutput: '', isHidden: false, weight: 10 }]
+    });
+  };
+
+  const handleRemoveTestCase = (index: number) => {
+    const updated = [...newAssignment.testCases];
+    updated.splice(index, 1);
+    setNewAssignment({ ...newAssignment, testCases: updated });
+  };
+
+  const handleUpdateTestCase = (index: number, field: string, value: any) => {
+    const updated = [...newAssignment.testCases];
+    updated[index] = { ...updated[index], [field]: value };
+    setNewAssignment({ ...newAssignment, testCases: updated });
+  };
 
   // Support State
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
@@ -309,7 +339,18 @@ const AdminDashboard: React.FC = () => {
         await api.post('/assignments', newAssignment);
         toast.success('Bài tập đã được đăng thành công!', { id: loadingToast });
       }
-      setNewAssignment({ title: '', description: '', deadline: '', maxScore: 100 });
+      setNewAssignment({ 
+        title: '', 
+        description: '', 
+        deadline: '', 
+        maxScore: 100,
+        difficulty: 'Trung bình',
+        language: 'javascript',
+        timeLimit: 2000,
+        memoryLimit: 128,
+        complexity: 'O(n)',
+        testCases: []
+      });
       fetchAssignments();
       setShowAddAssignment(false);
       setEditingAssignment(null);
@@ -336,8 +377,14 @@ const AdminDashboard: React.FC = () => {
     setNewAssignment({
       title: a.title,
       description: a.description,
-      deadline: new Date(a.deadline).toISOString().slice(0, 16),
+      deadline: a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : '',
       maxScore: a.maxScore,
+      difficulty: a.difficulty || 'Trung bình',
+      language: a.language || 'javascript',
+      timeLimit: a.timeLimit || 2000,
+      memoryLimit: a.memoryLimit || 128,
+      complexity: a.complexity || 'O(n)',
+      testCases: a.testCases || []
     });
     setShowAddAssignment(true);
   };
@@ -593,6 +640,8 @@ const AdminDashboard: React.FC = () => {
                         </div>
 
                         <form onSubmit={handleCreateAssignment} className="space-y-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-5">
                                <div>
                                   <label className="block text-xs font-black text-slate-400 uppercase mb-2">Tiêu đề bài tập</label>
                                   <input type="text" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.title} onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})} />
@@ -601,20 +650,95 @@ const AdminDashboard: React.FC = () => {
                                   <label className="block text-xs font-black text-slate-400 uppercase mb-2">Mô tả nội dung & Yêu cầu</label>
                                   <textarea required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium" rows={5} value={newAssignment.description} onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}></textarea>
                                </div>
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Độ khó</label>
+                                     <select className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.difficulty} onChange={(e) => setNewAssignment({...newAssignment, difficulty: e.target.value})}>
+                                        <option value="Dễ">Dễ</option>
+                                        <option value="Trung bình">Trung bình</option>
+                                        <option value="Khó">Khó</option>
+                                        <option value="Master">Master</option>
+                                     </select>
+                                  </div>
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Ngôn ngữ</label>
+                                     <select className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.language} onChange={(e) => setNewAssignment({...newAssignment, language: e.target.value})}>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="cpp">C++</option>
+                                        <option value="python">Python</option>
+                                        <option value="java">Java</option>
+                                     </select>
+                                  </div>
+                               </div>
+                               <div className="grid grid-cols-3 gap-4">
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Time Limit (ms)</label>
+                                     <input type="number" className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.timeLimit} onChange={(e) => setNewAssignment({...newAssignment, timeLimit: parseInt(e.target.value)})} />
+                                  </div>
+                                  <div>
+                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Memory (MB)</label>
+                                     <input type="number" className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.memoryLimit} onChange={(e) => setNewAssignment({...newAssignment, memoryLimit: parseInt(e.target.value)})} />
+                                  </div>
                                   <div>
                                      <label className="block text-xs font-black text-slate-400 uppercase mb-2">Điểm tối đa</label>
                                      <input type="number" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.maxScore} onChange={(e) => setNewAssignment({...newAssignment, maxScore: parseInt(e.target.value)})} />
                                   </div>
-                                  <div>
-                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">Hạn nộp</label>
-                                     <input type="datetime-local" required className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.deadline} onChange={(e) => setNewAssignment({...newAssignment, deadline: e.target.value})} />
-                                  </div>
                                </div>
-                           <div className="flex justify-end gap-3 pt-4">
-                             <button type="button" onClick={() => { setShowAddAssignment(false); setEditingAssignment(null); }} className="px-8 py-3 text-slate-500 font-bold">HỦY</button>
-                             <button type="submit" className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                               {editingAssignment ? 'CẬP NHẬT' : 'ĐĂNG BÀI TẬP'}
+                               <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">Hạn nộp (Để trống nếu không giới hạn)</label>
+                                  <input type="datetime-local" className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" value={newAssignment.deadline} onChange={(e) => setNewAssignment({...newAssignment, deadline: e.target.value})} />
+                               </div>
+                            </div>
+
+                            <div className="space-y-5 border-l border-slate-200 dark:border-slate-800 pl-6">
+                               <div className="flex justify-between items-center">
+                                  <label className="block text-xs font-black text-slate-400 uppercase">Danh sách Test Cases</label>
+                                  <button type="button" onClick={handleAddTestCase} className="text-[10px] font-black bg-emerald-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-emerald-600 transition-all">
+                                     <Plus size={14}/> THÊM TEST CASE
+                                  </button>
+                               </div>
+                               
+                               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                  {newAssignment.testCases.map((tc, index) => (
+                                    <div key={index} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 relative group">
+                                       <button type="button" onClick={() => handleRemoveTestCase(index)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg">
+                                          <X size={14}/>
+                                       </button>
+                                       <div className="grid grid-cols-2 gap-3 mb-3">
+                                          <div>
+                                             <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Input</label>
+                                             <textarea className="w-full px-3 py-2 bg-white dark:bg-slate-900 rounded-xl outline-none border border-transparent focus:border-indigo-500 text-xs font-mono" rows={2} value={tc.input} onChange={(e) => handleUpdateTestCase(index, 'input', e.target.value)}></textarea>
+                                          </div>
+                                          <div>
+                                             <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Expected Output</label>
+                                             <textarea className="w-full px-3 py-2 bg-white dark:bg-slate-900 rounded-xl outline-none border border-transparent focus:border-indigo-500 text-xs font-mono" rows={2} value={tc.expectedOutput} onChange={(e) => handleUpdateTestCase(index, 'expectedOutput', e.target.value)}></textarea>
+                                          </div>
+                                       </div>
+                                       <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                             <input type="checkbox" id={`hidden-${index}`} checked={tc.isHidden} onChange={(e) => handleUpdateTestCase(index, 'isHidden', e.target.checked)} />
+                                             <label htmlFor={`hidden-${index}`} className="text-[10px] font-black text-slate-500 uppercase">Ẩn test case</label>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                             <label className="text-[10px] font-black text-slate-500 uppercase">Trọng số:</label>
+                                             <input type="number" className="w-12 px-2 py-1 bg-white dark:bg-slate-900 rounded-lg text-xs font-bold" value={tc.weight} onChange={(e) => handleUpdateTestCase(index, 'weight', parseInt(e.target.value))} />
+                                          </div>
+                                       </div>
+                                    </div>
+                                  ))}
+                                  {newAssignment.testCases.length === 0 && (
+                                    <div className="py-10 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs italic">
+                                       Chưa có test case nào. Hãy thêm ít nhất 1 test case để có thể chấm điểm.
+                                    </div>
+                                  )}
+                               </div>
+                            </div>
+                          </div>
+
+                           <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                             <button type="button" onClick={() => { setShowAddAssignment(false); setEditingAssignment(null); }} className="px-8 py-3 text-slate-500 font-bold uppercase tracking-widest text-xs">HỦY BỎ</button>
+                             <button type="submit" className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all text-xs uppercase tracking-widest">
+                               {editingAssignment ? 'CẬP NHẬT THỬ THÁCH' : 'ĐĂNG BÀI TẬP NGAY'}
                              </button>
                            </div>
                         </form>

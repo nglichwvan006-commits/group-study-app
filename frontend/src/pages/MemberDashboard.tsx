@@ -43,12 +43,22 @@ const MemberDashboard: React.FC = () => {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
   const [pet, setPet] = useState<any>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // Support State
   const [showSupport, setShowSupport] = useState(false);
   const [supportData, setSupportData] = useState({ name: '', email: '', message: '' });
   const [supportHistory, setSupportHistory] = useState<any[]>([]);
   const [isCheckingHistory, setIsCheckingHistory] = useState(false);
+
+  useEffect(() => {
+    if (selectedAssignment && activeTab === 'assignments') {
+      // Small timeout to ensure the element is rendered and AnimatePresence has started
+      setTimeout(() => {
+        editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [selectedAssignment, activeTab]);
 
   useEffect(() => {
     fetchAssignments();
@@ -449,7 +459,7 @@ const MemberDashboard: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="lg:col-span-8 h-full">
+                    <div ref={editorRef} className="lg:col-span-8 h-full">
                       <AnimatePresence mode="wait">
                         {selectedAssignment ? (
                           <motion.div key={selectedAssignment.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white dark:bg-slate-900 p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800">

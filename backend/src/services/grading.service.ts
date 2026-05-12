@@ -25,7 +25,7 @@ Tiêu chí:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-chat",
+          model: "deepseek/deepseek-chat:free",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -80,7 +80,7 @@ Yêu cầu:
           "X-Title": "Group Study App"
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-chat",
+          model: "deepseek/deepseek-chat:free",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -153,7 +153,7 @@ Nhiệm vụ của bạn:
           "X-Title": "Group Study App"
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-chat",
+          model: "deepseek/deepseek-chat:free",
           messages: [{ role: "user", content: prompt }]
         })
       });
